@@ -1,0 +1,76 @@
+<nav id="navbar" class="bg-blue-600 p-4 shadow-lg sticky top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto flex justify-between items-center">
+        <a href="{{ url_for('index') }}" class="text-white text-4xl font-bold hover:text-gray-200 transition duration-300">
+            Connectly
+        </a>
+
+        <div class="flex space-x-6 items-center">
+            <a href="{{ url_for('index') }}" class="text-white text-lg font-semibold hover:text-gray-200 transition duration-300">
+                Home
+            </a>
+
+        {% if user %}
+            <div class="relative">
+                <button class="flex items-center space-x-2 text-white focus:outline-none hover:text-gray-200 transition duration-300" id="userMenuButton">
+                    <img src="{{ user.profile_image }}" alt="User Image" class="w-12 h-12 rounded-full border-2 border-white">
+                    <span>{{ user.name }}</span>
+                    <svg class="w-6 h-6 fill-current" viewBox="0 0 20 20"><path d="M5.05 7.05a.5.5 0 01.7 0L10 11.3l4.24-4.24a.5.5 0 11.7.7l-4.5 4.5a.5.5 0 01-.7 0l-4.5-4.5a.5.5 0 010-.7z"/></svg>
+                </button>
+
+        
+                <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 bg-white rounded-lg shadow-lg w-48">
+                    <a href="{{ url_for('profile', user_id=user.user_id) }}" class="block px-4 py-3 text-gray-800 hover:bg-gray-100 transition duration-200">Perfil</a>
+                    <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-gray-800 hover:bg-gray-100 transition duration-200">Cerrar Sesión</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userMenuButton = document.getElementById('userMenuButton');
+        const userMenuDropdown = document.getElementById('userMenuDropdown');
+        const navbar = document.getElementById('navbar');
+
+        userMenuButton.addEventListener('click', function(event) {
+            event.stopPropagation();
+            userMenuDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function() {
+            if (!userMenuDropdown.classList.contains('hidden')) {
+                userMenuDropdown.classList.add('hidden');
+            }
+        });
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting) {
+                    navbar.classList.add('sticky-active');
+                } else {
+                    navbar.classList.remove('sticky-active');
+                }
+            },
+            { threshold: 0 }
+        );
+
+        observer.observe(navbar);
+    });
+</script>
+
+<style>
+    #navbar {
+        background-color: #1E3A8A;
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+
+    #navbar.sticky-active {
+        background-color: #1D4ED8;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-10px);
+        transition: background-color 0.3s ease, padding 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    }
+</style>

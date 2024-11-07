@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil de Usuario</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
+    <style>
+        /* Definimos la animación de aparición */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+    {% include 'navbar.html' %}
+    <div class="max-w-10xl mx-auto p-8 bg-white shadow-2xl rounded-xl">
+
+        <div class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8 border-b pb-8 border-gray-200">
+            <img src="{{ user.profile_image }}" alt="Foto de perfil de {{ user.name }}" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-lg transform hover:scale-110 transition duration-300">
+            <div class="text-center md:text-left flex-grow">
+                <h1 class="text-4xl font-extrabold text-gray-900">{{ user.name }}</h1>
+                <p class="text-gray-500 text-lg"><strong>Interés principal:</strong> {{ user.interest }}</p>
+            </div>
+            <a href="{{ url_for('create_post') }}" class="ml-auto bg-blue-600 text-white py-3 px-8 rounded-full hover:bg-blue-700 transition duration-300 shadow-md text-lg font-semibold">
+                Crear Publicación
+            </a>
+        </div>
+
+        <div class="mt-10">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Mis Publicaciones</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% if user_posts %}
+                    {% for post in user_posts %}
+                        <div class="flex bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300 animate-fade-in-up">
+                
+                            {% if post.Image %}
+                                <img src="{{ post.Image }}" alt="Imagen del post" class="w-20 h-20 object-cover rounded-lg mr-4">
+                            {% else %}
+                                <div class="w-20 h-20 bg-gray-200 rounded-lg mr-4"></div> 
+                            {% endif %}
+
+ 
+                            <div class="flex flex-col justify-between">
+                                <p class="text-gray-700  mt-4">{{ post.Content }}</p>
+                                <p class="text-gray-600 text-sm mt-2">{{ post.PostDate.strftime('%Y-%m-%d %H:%M') }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-gray-600">No has publicado nada aún.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-12">
+            <h2 class="text-xl font-semibold text-blue-600 mb-6">Usuarios con el mismo interés ({{ user.interest }})</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                {% for similar_user in similar_users %}
+                    <div class="bg-white p-6 rounded-lg shadow-lg text-center transition duration-300 transform hover:scale-105 hover:bg-blue-50 animate-fade-in-up">
+                        <img src="{{ similar_user.profile_image }}" alt="Foto de perfil de {{ similar_user.name }}" class="w-20 h-20 mx-auto rounded-full border-2 border-blue-500 mb-3">
+                        <p class="text-gray-800 font-bold">{{ similar_user.name }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="text-center mt-12">
+            <a href="{{ url_for('logout') }}" class="inline-block py-3 px-12 bg-red-500 text-white font-bold rounded-full hover:bg-red-600 transition duration-300 shadow-lg text-lg">
+                Cerrar Sesión
+            </a>
+        </div>
+    </div>
+</body>
+</html>

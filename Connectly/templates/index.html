@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunidades de Usuarios</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Comunidades de Usuarios por Interés Primario</h1>
+    <div id="communities-container">
+        {% for interest, users in communities.items() %}
+            <div class="community">
+                <h2>Interés: {{ interest }}</h2>
+                {% for user in users %}
+                    <div class="user">
+                        ID: {{ user.user_id }} - Nombre: {{ user.name }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

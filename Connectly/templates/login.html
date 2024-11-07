@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gradient-to-tr from-teal-400 via-blue-500 to-purple-600 text-gray-800">
+    <div class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-2xl  mx-4">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">¡Bienvenido de nuevo!</h1>
+            <p class="text-gray-500 mt-2">Por favor, ingresa tus datos para acceder a tu cuenta</p>
+        </div>
+        
+        <form action="{{ url_for('login') }}" method="post" class="space-y-6">
+            <div>
+                <label for="username" class="block text-sm font-semibold text-gray-600">Nombre de Usuario</label>
+                <input type="text" id="username" name="username" class="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" placeholder="Ingresa tu usuario" required>
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-semibold text-gray-600">Contraseña</label>
+                <input type="password" id="password" name="password" class="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" placeholder="Ingresa tu contraseña" required>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white font-bold rounded-lg hover:from-teal-500 hover:to-blue-500 transition duration-300 ease-in-out">
+                Iniciar Sesión
+            </button>
+        </form>
+
+        {% if error %}
+            <p class="mt-4 text-center text-sm text-red-500">{{ error }}</p>
+        {% endif %}
+
+        <p class="mt-8 text-center text-gray-600 text-sm">
+            ¿No tienes una cuenta?
+            <a href="#" class="text-blue-500 font-medium hover:underline">Regístrate</a>
+        </p>
+    </div>
+</body>
+</html>
