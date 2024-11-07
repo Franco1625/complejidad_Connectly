@@ -1,76 +1,101 @@
-<nav id="navbar" class="bg-blue-600 p-4 shadow-lg sticky top-0 z-50 transition-all duration-300">
-    <div class="container mx-auto flex justify-between items-center">
-        <a href="{{ url_for('index') }}" class="text-white text-4xl font-bold hover:text-gray-200 transition duration-300">
-            Connectly
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<div id="overlay" class="fixed inset-0 bg-black bg-opacity-25 hidden z-30 transition-opacity duration-300"></div>
+
+<div id="sidebar" class="bg-[#2B4D7A] text-white w-24 h-full fixed top-0 left-0 p-4 transition-all duration-300 transform flex flex-col items-center z-40 rounded-r-xl border-r-2 border-[#374151]">
+    <div class="flex items-center justify-start mb-10 w-full cursor-pointer" id="toggleSidebar">
+        <img src="/./static/images/logo.png" alt="Logo" class="rounded-full w-14 h-14">
+        <span class="text-3xl font-semibold ml-2 sidebar-text hidden" id="sidebarLabel">Connectly</span>
+    </div>
+
+    <div class="flex flex-col space-y-8 flex-grow items-center w-full">
+        <a href="{{ url_for('index') }}" class="flex items-center space-x-4  transition w-full p-3 rounded-md hover:bg-[#1E3A8A]">
+            <span class="material-icons text-4xl">home</span>
+            <span class="text-xl sidebar-text hidden" id="homeLabel">Home</span>
         </a>
 
-        <div class="flex space-x-6 items-center">
-            <a href="{{ url_for('index') }}" class="text-white text-lg font-semibold hover:text-gray-200 transition duration-300">
-                Home
-            </a>
-
         {% if user %}
-            <div class="relative">
-                <button class="flex items-center space-x-2 text-white focus:outline-none hover:text-gray-200 transition duration-300" id="userMenuButton">
-                    <img src="{{ user.profile_image }}" alt="User Image" class="w-12 h-12 rounded-full border-2 border-white">
-                    <span>{{ user.name }}</span>
-                    <svg class="w-6 h-6 fill-current" viewBox="0 0 20 20"><path d="M5.05 7.05a.5.5 0 01.7 0L10 11.3l4.24-4.24a.5.5 0 11.7.7l-4.5 4.5a.5.5 0 01-.7 0l-4.5-4.5a.5.5 0 010-.7z"/></svg>
-                </button>
+        <a href="{{ url_for('profile', user_id=user.user_id) }}" class="flex items-center space-x-4 transition w-full p-3 rounded-md hover:bg-[#1E3A8A]">
+            <span class="material-icons text-4xl">account_circle</span>
+            <span class="text-xl sidebar-text hidden" id="profileLabel">Profile</span>
+        </a>
 
-        
-                <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 bg-white rounded-lg shadow-lg w-48">
-                    <a href="{{ url_for('profile', user_id=user.user_id) }}" class="block px-4 py-3 text-gray-800 hover:bg-gray-100 transition duration-200">Perfil</a>
-                    <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-gray-800 hover:bg-gray-100 transition duration-200">Cerrar Sesión</a>
-                </div>
-            </div>
+        <a href="{{ url_for('logout') }}" class="flex items-center space-x-4 transition w-full p-3 rounded-md hover:bg-[#1E3A8A] ">
+            <span class="material-icons text-4xl">logout</span>
+            <span class="text-xl sidebar-text hidden truncate" id="logoutLabel">Logout</span>
+        </a>
         {% endif %}
     </div>
-</nav>
+
+    {% if user %}
+    <div class="mt-auto flex items-center cursor-pointer w-full justify-center lg:justify-start" id="toggleProfile">
+        <img src="{{ user.profile_image }}" alt="User Image" class="w-14 h-14 rounded-full border-2 border-white">
+        <div class="ml-2 text-left sidebar-text hidden" id="userInfo">
+            <p class="text-white font-semibold text-lg">{{ user.name }}</p>
+            <p class="text-gray-300 text-sm">Web Developer</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const userMenuButton = document.getElementById('userMenuButton');
-        const userMenuDropdown = document.getElementById('userMenuDropdown');
-        const navbar = document.getElementById('navbar');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const toggleSidebar = document.getElementById('toggleSidebar');
+    const body = document.body;
 
-        userMenuButton.addEventListener('click', function(event) {
-            event.stopPropagation();
-            userMenuDropdown.classList.toggle('hidden');
-        });
+    const sidebarText = document.querySelectorAll('.sidebar-text');
 
-        document.addEventListener('click', function() {
-            if (!userMenuDropdown.classList.contains('hidden')) {
-                userMenuDropdown.classList.add('hidden');
-            }
-        });
+    function toggleSidebarVisibility() {
+        sidebar.classList.toggle('w-24');
+        sidebar.classList.toggle('w-64');
+        sidebar.classList.toggle('items-center');
+        sidebar.classList.toggle('items-start');
+        overlay.classList.toggle('hidden');
 
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (!entry.isIntersecting) {
-                    navbar.classList.add('sticky-active');
-                } else {
-                    navbar.classList.remove('sticky-active');
-                }
-            },
-            { threshold: 0 }
-        );
+        const isExpanded = sidebar.classList.contains('w-64');
+        
+        if (isExpanded) {
+            body.style.overflow = 'hidden';
+            sidebarText.forEach(el => {
+                el.classList.remove('hidden');
+                el.classList.add('slide-in');
+            });
+        } else {
+            body.style.overflow = '';
+            sidebarText.forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('slide-in');
+            });
+        }
+    }
 
-        observer.observe(navbar);
+    toggleSidebar.addEventListener('click', toggleSidebarVisibility);
+    document.getElementById('toggleProfile').addEventListener('click', toggleSidebarVisibility);
+
+    document.addEventListener('click', function(event) {
+        const isClickInside = sidebar.contains(event.target) || toggleSidebar.contains(event.target);
+        if (!isClickInside && sidebar.classList.contains('w-64')) {
+            toggleSidebarVisibility();
+        }
     });
+
+    overlay.addEventListener('click', toggleSidebarVisibility);
 </script>
 
 <style>
-    #navbar {
-        background-color: #1E3A8A;
-        padding: 20px;
-        transition: all 0.3s ease;
+    #overlay {
+        background-color: rgba(0, 0, 0, 0.25);
     }
 
-    #navbar.sticky-active {
-        background-color: #1D4ED8;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transform: translateY(-10px);
-        transition: background-color 0.3s ease, padding 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    .sidebar-text {
+        opacity: 0;
+        transform: translateX(-20px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .slide-in {
+        opacity: 1;
+        transform: translateX(0);
     }
 </style>

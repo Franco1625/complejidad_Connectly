@@ -6,7 +6,6 @@
     <title>Perfil de Usuario</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
     <style>
-        /* Definimos la animación de aparición */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -22,11 +21,23 @@
             animation: fadeInUp 0.5s ease-out forwards;
             opacity: 0;
         }
+
+        #main-content {
+            transition: margin-left 0.3s ease;
+        }
+
+        #sidebar.w-24 + #main-content {
+            margin-left: 6rem;
+        }
+
+        #sidebar.w-64 + #main-content {
+            margin-left: 0;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen text-gray-800">
+<body class="bg-gray-50 ml-20 min-h-screen text-gray-800">
     {% include 'navbar.html' %}
-    <div class="max-w-10xl mx-auto p-8 bg-white shadow-2xl rounded-xl">
+    <div id="main-content" class="max-w-10xl mx-auto p-8 bg-white shadow-2xl rounded-xl">
 
         <div class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8 border-b pb-8 border-gray-200">
             <img src="{{ user.profile_image }}" alt="Foto de perfil de {{ user.name }}" class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-lg transform hover:scale-110 transition duration-300">
@@ -45,16 +56,13 @@
                 {% if user_posts %}
                     {% for post in user_posts %}
                         <div class="flex bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300 animate-fade-in-up">
-                
                             {% if post.Image %}
                                 <img src="{{ post.Image }}" alt="Imagen del post" class="w-20 h-20 object-cover rounded-lg mr-4">
                             {% else %}
                                 <div class="w-20 h-20 bg-gray-200 rounded-lg mr-4"></div> 
                             {% endif %}
-
- 
                             <div class="flex flex-col justify-between">
-                                <p class="text-gray-700  mt-4">{{ post.Content }}</p>
+                                <p class="text-gray-700 mt-4">{{ post.Content }}</p>
                                 <p class="text-gray-600 text-sm mt-2">{{ post.PostDate.strftime('%Y-%m-%d %H:%M') }}</p>
                             </div>
                         </div>
@@ -84,4 +92,3 @@
         </div>
     </div>
 </body>
-</html>
