@@ -5,28 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear Publicación</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
 </head>
-<body>
+<body class="bg-gray-100 font-[Poppins]">
     
-    {% include 'navbar.html' %}
+    <div class="lg:w-[300px] fixed lg:relative inset-y-0 z-40 bg-gray-900">
+        {% include 'sidebar.html' %}
+    </div>
 
-    <div class="flex justify-center items-center min-h-screen bg-gray-100 px-4">
-        <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-lg transform transition-all duration-300 hover:shadow-2xl">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Crear una nueva publicación</h2>
-            <form action="{{ url_for('create_post') }}" method="post" enctype="multipart/form-data" class="space-y-4">
+    <div class="lg:ml-[300px] p-8 mt-16 lg:mt-0 flex justify-center items-start lg:items-center min-h-screen bg-gray-50" id="main-content">
+        <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg transform transition-all duration-300 hover:shadow-2xl border-t-4 border-blue-500 mt-16 lg:mt-0">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Crear una nueva publicación</h2>
+            <form action="{{ url_for('create_post') }}" method="post" enctype="multipart/form-data" class="space-y-6">
                 
                 <textarea 
                     name="content" 
                     placeholder="¿Qué estás pensando?" 
-                    class="w-full h-32 p-4 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-400 transition duration-300 resize-none" 
+                    class="w-full h-32 p-4 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-300 resize-none bg-gray-100" 
                     required></textarea>
 
-                <label class="flex items-center justify-center space-x-2 bg-blue-50 p-3 rounded-lg cursor-pointer hover:bg-blue-100 transition duration-300 border border-dashed border-blue-400">
-                    <svg class="w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <label class="flex flex-col items-center justify-center space-y-2 bg-blue-50 p-4 rounded-lg cursor-pointer hover:bg-blue-100 transition duration-300 border border-dashed border-blue-500">
+                    <svg class="w-8 h-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.414 6.414a2 2 0 11-2.828-2.828l6.414-6.414a2 2 0 112.828 2.828zM15 13l6-6M9 13h6"></path>
                     </svg>
-                    <span class="text-blue-500 font-medium">Seleccionar imagen (obligatorio)</span>
-                    <input type="file" name="image" accept="image/*" class="hidden" required onchange="previewImage(event)">
+                    <span class="text-blue-600 font-medium">Seleccionar imagen</span>
+                    <input type="file" name="image" accept="image/*" class="hidden" onchange="previewImage(event)">
                 </label>
 
                 <div id="previewContainer" class="mt-4">
@@ -35,7 +39,7 @@
 
                 <button 
                     type="submit" 
-                    class="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300">
+                    class="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 shadow-md">
                     Publicar
                 </button>
             </form>
