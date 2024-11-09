@@ -53,7 +53,7 @@ class CommunityData:
 
     def follow_user(self, follower_id, followed_id):
         if follower_id == followed_id:
-            return False  # No se puede seguir a sí mismo
+            return False
 
         follow_query = text("""
             INSERT IGNORE INTO user_follows (follower_id, followed_id)
@@ -76,7 +76,6 @@ class CommunityData:
         return result is not None
     
     def get_user_recommendations(self, user_id):
-        # Obtener todos los usuarios recomendados basados en "amigos en común" o relaciones unilaterales
         query_recommendations = text("""
             SELECT DISTINCT uf2.follower_id AS recommended_user
             FROM user_follows AS uf1
@@ -117,7 +116,6 @@ class CommunityData:
         return recommendations
     
     def unfollow_user(self, follower_id, followed_id):
-    # Evitar que el usuario intente dejar de seguirse a sí mismo
         if follower_id == followed_id:
             return False
     
