@@ -3,7 +3,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import random
 
-# Conectar a la base de datos
 db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
