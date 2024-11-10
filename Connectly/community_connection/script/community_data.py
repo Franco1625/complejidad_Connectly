@@ -171,6 +171,24 @@ class CommunityData:
         """)
         with self.engine.connect() as connection:
             return connection.execute(query, {"user_id": user_id}).fetchall()
+        
+    def add_comment(self, post_id, user_id, content):
+        query = text("""
+            INSERT INTO comments (PostID, UserID, Content, CommentDate)
+            VALUES (:post_id, :user_id, :content, NOW())
+        """)
+        with self.SessionLocal() as session:
+            session.execute(query, {"post_id": post_id, "user_id": user_id, "content": content})
+            session.commit()
 
-        
-        
+    def get_comments_for_post(self, post_id):
+        query = text("""
+            SELECT c.CommentID, c.Content, c.CommentDate, u.Name, u.profile_image
+            FROM comments c
+            JOIN social_media_users u ON c.UserID = u.UserID
+            WHERE c.PostID = :post_id
+            ORDER BY c.CommentDate ASC
+        """)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"post_id": post_id}).fetchall()
+            return [{"CommentID": row.CommentID, "Content": row.Content, "CommentDate": row.CommentDate, "Name": row.Name, "profile_image": row.profile_image} for row in result]

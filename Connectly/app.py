@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -223,6 +223,25 @@ def following(user_id):
     
     return render_template('following.html', following=following_list, user_id=user_id)
 
+@app.route('/get_comments/<int:post_id>', methods=['GET'])
+def get_comments(post_id):
+    comments = community_data_instance.get_comments_for_post(post_id)
+    return jsonify(comments)
+
+# Ruta para agregar un comentario a un post específico
+@app.route('/add_comment/<int:post_id>', methods=['POST'])
+def add_comment(post_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    content = request.form.get('comment_content')
+    user_id = session['user_id']
+
+    if content:
+        community_data_instance.add_comment(post_id, user_id, content)
+        return jsonify({"success": True})
+    return jsonify({"error": "No content provided"}), 400
+
 @app.route('/home')
 def index():
     user_id = session.get('user_id')
@@ -235,9 +254,23 @@ def index():
         ORDER BY p.PostDate DESC
     """)
     with engine.connect() as connection:
-        posts = connection.execute(query).fetchall()
-    
+        posts_raw = connection.execute(query).fetchall()
+
+    # Convertimos los resultados a una lista de diccionarios
+    posts = [
+        {
+            "PostID": post[0],
+            "Content": post[1],
+            "PostDate": post[2],
+            "Image": post[3],
+            "Name": post[4],
+            "profile_image": post[5]
+        }
+        for post in posts_raw
+    ]
+
     return render_template('home.html', posts=posts, user=user_data)
+
 
 @app.route('/storage/<path:filename>')
 def serve_image(filename):
