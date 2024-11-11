@@ -6,179 +6,116 @@
     <title>Página de Inicio</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.8.0/alpine.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+
     <style>
-        /* Fondo oscuro del modal */
-        #commentModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-            overflow-y: auto;
+      #commentModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; z-index: 50; overflow-y: auto; }
+
+      #commentModalContent { background: white; width: 90%; max-width: 1200px; max-height: 95vh; padding: 30px; border-radius: 15px; display: flex; gap: 20px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2); animation: fadeInModal 0.3s ease; overflow-y: auto; }
+      @keyframes fadeInModal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      
+      .flex-shrink-0 { width: 600px; height: 600px; }
+      
+      .author-info { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+      .author-avatar { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #ddd; }
+      .author-name { font-size: 1.25rem; font-weight: 600; color: #333; }
+      .author-role { font-size: 0.875rem; color: #888; }
+      
+      .comment-section { border-left: 1px solid #ddd; padding-left: 20px; max-height: 60vh; overflow-y: auto; padding-top: 15px; }
+      
+      .comment-item {
+    display: flex;
+    align-items: start;
+    gap: 4px;
+    position: relative;
+    flex-wrap: wrap; /* Asegura que el contenido se envuelva */
+}
+      .comment-avatar { width: 36px; height: 36px; border-radius: 50%; margin-right: 10px; border: 2px solid #e5e7eb; }
+      .comment-text { background-color: #f9fafb; padding: 8px 12px; border-radius: 12px; color: #4b5563; font-size: 0.875rem; word-break: break-word; }
+      .comment-date { font-size: 0.75rem; color: #6b7280; }
+      
+      .comment-form { display: flex; align-items: center; gap: 10px; border-top: 1px solid #ddd; padding-top: 15px; margin-top: auto; }
+      .comment-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s ease; }
+      .comment-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }
+      
+      #imageModal .scale-in { transform: scale(1); opacity: 1; }
+      #imageModal .scale-out { transform: scale(0.95); opacity: 0; }
+      #imageModal .transition-all { transition: all 0.3s ease; }
+      
+      #imageModal { background-color: rgba(0, 0, 0, 0.5); }
+      
+      .submit-button { background-color: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; transition: background-color 0.3s ease; }
+      .submit-button:hover { background-color: #2563eb; }
+      
+      .char-count { font-size: 0.875rem; color: #6b7280; text-align: right; }
+      
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      body.modal-open { overflow: hidden; }
+        .comment-item div {
+         word-wrap: break-word;
+         overflow-wrap: break-word; 
+         word-break: break-word; 
+         max-width: 100%; /* Asegura que el comentario no exceda el ancho */
+         white-space: normal; /* Permite que el texto envuelva en varias líneas */
+         }
+        .interest-tag {
+         background-color: #2563EB; /* Azul destacado */
+         color: white;
+         font-size: 0.75rem; /* Tamaño de texto pequeño */
+         font-weight: 600;
+         border-radius: 9999px; /* Para una forma circular */
+         padding: 2px 8px; /* Espaciado interno */
+         margin: 2px; /* Espacio externo para separarlo del borde */
+         position: absolute;
+         top: 0;
+         right: 0;
         }
-        
-        /* Contenido del modal */
-        #commentModalContent {
-            background: white;
-            width: 90%;
-            max-width: 1200px; /* Tamaño máximo más amplio */
-            max-height: 95vh; /* Altura máxima del modal */
-            padding: 30px;
-            border-radius: 15px;
-            display: flex;
-            gap: 20px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
-            animation: fadeInModal 0.3s ease;
-            overflow-y: auto; /* Scroll automático si excede la altura */
-        }
+ 
+
+      
+/* Limitación de altura para contenido extenso con efecto de clamping */
+.line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Sombra y transición para las cards */
+.card {
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Transición para botones de interacción */
+button {
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+/* Limita el ancho máximo de la imagen para mantener el diseño en dispositivos grandes */
+img {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+      .card-visible { opacity: 1; transform: translateY(0); }
+      
+      .post-content { overflow-wrap: anywhere; word-break: break-word; }
     
-        /* Animación para el modal */
-        @keyframes fadeInModal {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-    
-        /* Imagen más grande */
-        .flex-shrink-0 {
-            width: 600px;
-            height: 600px;
-        }
-    
-        /* Información del autor */
-        .author-info {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .author-avatar {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            border: 2px solid #ddd;
-        }
-        .author-name {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #333;
-        }
-        .author-role {
-            font-size: 0.875rem;
-            color: #888;
-        }
-    
-        /* Sección de comentarios con altura optimizada */
-        .comment-section {
-            border-left: 1px solid #ddd;
-            padding-left: 20px;
-            max-height: 60vh; /* Altura máxima para comentarios */
-            overflow-y: auto;
-            padding-top: 15px;
-        }
-    
-        /* Estilo de cada comentario */
-        .comment-item {
-            display: flex;
-            margin-bottom: 15px;
-        }
-        .comment-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            margin-right: 10px;
-            border: 2px solid #e5e7eb;
-        }
-        .comment-text {
-            background-color: #f9fafb;
-            padding: 8px 12px;
-            border-radius: 12px;
-            color: #4b5563;
-            font-size: 0.875rem;
-            word-break: break-word;
-        }
-        .comment-date {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-    
-        /* Formulario de comentarios */
-        .comment-form {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-top: 1px solid #ddd;
-            padding-top: 15px;
-            margin-top: auto;
-        }
-        .comment-input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s ease;
-        }
-        .comment-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-        }
-    
-        /* Botón de enviar comentario */
-        .submit-button {
-            background-color: #3b82f6;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        .submit-button:hover {
-            background-color: #2563eb;
-        }
-    
-        /* Contador de caracteres */
-        .char-count {
-            font-size: 0.875rem;
-            color: #6b7280;
-            text-align: right;
-        }
-    
-        /* Ocultar barra de desplazamiento */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-    
-        /* Evitar scroll en el fondo cuando el modal está abierto */
-        body.modal-open {
-            overflow: hidden;
-        }
-    
-        /* Efecto de entrada para las tarjetas de contenido */
-        .card {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.5s ease, transform 0.5s ease;
-        }
-        .card-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    
-        /* Ajuste para el contenido de texto largo */
-        .post-content {
-            overflow-wrap: anywhere;
-            word-break: break-word;
-        }
     </style>
     
     
@@ -189,89 +126,147 @@
     </div>
     <div class="lg:ml-[300px] p-8 mt-16 lg:mt-0 transition-all duration-300 ease-in-out" id="main-content">
         <div class="flex flex-col items-center p-8 bg-gray-100 min-h-screen">
-            <div class="w-full max-w-2xl mb-8 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-800">Últimas Publicaciones</h1>
-                <a href="{{ url_for('create_post') }}" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300">
+            <div class="w-full max-w-2xl mb-8 flex flex-col sm:flex-row sm:justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Últimas Publicaciones</h1>
+                <a href="{{ url_for('create_post') }}" class="bg-blue-500 text-white py-2 px-4 w-full sm:w-auto rounded-lg hover:bg-blue-600 transition duration-300 text-center">
                     Crear Publicación
                 </a>
             </div>
+            
             <div class="w-full max-w-2xl space-y-6">
                 {% for post in posts %}
                     <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition duration-300 card flex flex-col">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center">
+                        
+                        <div class="flex items-center mb-4">
+                            <a href="{{ url_for('profile', user_id=post.UserID) }}">
                                 <img src="{{ post.profile_image }}" alt="Foto de perfil" class="w-12 h-12 rounded-full border border-gray-300 mr-4">
-                                <div>
-                                    <h2 class="font-bold text-lg text-gray-800">{{ post.Name }}</h2>
-                                    <p class="text-gray-500 text-sm">{{ post.PostDate.strftime('%Y-%m-%d %H:%M') }}</p>
-                                </div>
+                            </a>
+                        <div>
+                                <h2 class="font-bold text-lg text-gray-800">{{ post.Name }}</h2>
+                                <p class="text-gray-500 text-sm post-date" data-date="{{ post.PostDate.isoformat() }}"></p>
+                                <p class="text-blue-600 text-base font-semibold">{{ post.interest }}</p> <!-- Solo el primer interés -->
                             </div>
-                            <button onclick="openCommentModal('{{ post.PostID }}', '{{ post.Name }}', '{{ post.Content }}', '{{ post.Image }}', '{{ post.profile_image }}')" class="text-gray-500 hover:text-gray-700">
-                                <i class="bi bi-chat-dots text-2xl"></i>
+                        </div>
+                        
+                        
+                        <!-- Contenido del post con limitación de ancho -->
+                        <div x-data="{ expanded: false, contentExceedsLimit: {{ 'true' if post.Content|length > 200 else 'false' }} }" class="post-content mb-4 max-w-full lg:max-w-xl">
+                            <p x-ref="content" class="text-gray-700 leading-relaxed mb-2" :class="expanded ? '' : 'line-clamp-4'">
+                                {{ post.Content }}
+                            </p>
+                            <button x-show="contentExceedsLimit" @click="expanded = !expanded" class="text-blue-500 text-sm transition-colors hover:text-blue-700">
+                                <span x-text="expanded ? 'Ver menos' : 'Ver más'"></span>
                             </button>
                         </div>
-                        <p class="text-gray-700 mb-4 leading-relaxed post-content postContent max-h-20 overflow-hidden" data-expanded="false">
-                            {{ post.Content[:200] }}
-                            {% if post.Content|length > 200 %}
-                                <span class="text-blue-500 cursor-pointer toggleContent"> Ver más</span>
-                            {% endif %}
-                        </p>
                         
-                        
+                        <!-- Imagen del post con max-width y cursor pointer -->
                         {% if post.Image %}
-                            <img src="{{ post.Image }}" alt="Imagen del post" class="w-full max-h-80 object-cover rounded-lg cursor-pointer" onclick="openModal('{{ post.Image }}')">
+                            <img src="{{ post.Image }}" alt="Imagen del post" class="w-full max-h-80 object-cover rounded-lg cursor-pointer mb-4 transition-transform transform " onclick="openImageModal('{{ post.Image }}')">
                         {% endif %}
+    
+                        <!-- Botones de Like y Comentarios con efecto hover y responsive -->
+                        <div class="flex items-center space-x-4 mt-2">
+                            <!-- Botón de Like con contador y transición -->
+                            <button id="like-btn-{{ post.PostID }}" onclick="toggleLike('{{ post.PostID }}')" class="flex items-center text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110">
+                                <i id="like-icon-{{ post.PostID }}" class="bi {{ 'bi-heart-fill' if post.is_post_liked else 'bi-heart' }} text-red-500 text-xl mr-1"></i>
+                                <span id="like-count-{{ post.PostID }}">{{ post.like_count }}</span>
+                            </button>
+                            <button onclick="openCommentModal('{{ post.PostID }}', '{{ post.Name }}', '{{ post.Content }}', '{{ post.Image }}', '{{ post.profile_image }}', '{{ post.interest }}', '{{ post.UserID }}')">
+                                <i class="bi bi-chat-dots text-xl mr-1"></i>
+                                <span>Comentarios</span>
+                            </button>
+                            
+                        </div>
                     </div>
                 {% else %}
                     <p class="text-center text-gray-600">No hay publicaciones disponibles.</p>
                 {% endfor %}
             </div>
         </div>
+    </div>
+    
+  <!-- Modal de la imagen del post -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden" onclick="closeImageModal()">
+    <div id="imageModalContent" class="relative bg-transparent rounded-lg overflow-hidden transform transition-all duration-300 scale-95 opacity-0" onclick="event.stopPropagation()">
+        <button class="absolute top-2 right-2 text-red-500 text-3xl font-bold" onclick="closeImageModal()">×</button>
+        <img id="modalImage" src="" alt="Imagen del post" class="w-auto h-auto max-w-full max-h-screen object-contain">
+    </div>
+</div>
+
+
 <!-- Modal de comentarios -->
-<div id="commentModal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50" onclick="closeCommentModal(event)">
-    <div id="commentModalContent" class="bg-white w-full max-w-4xl max-h-[95vh] mx-4 lg:mx-8 p-8 rounded-lg shadow-lg flex gap-8 overflow-hidden" onclick="event.stopPropagation()">
+<div id="commentModal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4 sm:p-6 md:p-8" onclick="closeCommentModal(event)">
+    <div id="commentModalContent" class="bg-white w-full max-w-4xl max-h-[90vh] p-4 sm:p-6 md:p-8 rounded-lg shadow-lg flex flex-col md:flex-row gap-4 md:gap-8 overflow-hidden" onclick="event.stopPropagation()">
+        
         <!-- Imagen del post y avatar del autor -->
-        <div class="flex-shrink-0 rounded-lg w-[600px] h-[600px] bg-gray-200 relative overflow-hidden shadow-md">
+        <div class="flex-shrink-0 w-full md:w-[300px] lg:w-[400px] xl:w-[50%] min-h-[600px] max-h-[610px] md:h-auto rounded-lg bg-gray-200 relative overflow-hidden shadow-md">
             <img id="postImage" src="" alt="Imagen del post" class="w-full h-full object-cover rounded-lg">
         </div>
         
         <!-- Contenido y comentarios -->
-        <div class="flex flex-col w-full h-full">
+        <div class="flex flex-col w-full h-full justify-between">
+            
             <!-- Información del autor -->
-            <div class="flex items-center gap-4 border-b pb-4 mb-4">
-                <img id="postProfileImage" src="" alt="Avatar del autor" class="w-14 h-14 rounded-full border border-gray-300">
-                <div>
-                    <h2 id="postAuthor" class="font-semibold text-xl text-gray-800">Nombre del Autor</h2>
-                    <p id="postContent" class="text-gray-600 text-sm mt-1 overflow-hidden max-h-20" data-expanded="false"></p>
-                    <button id="toggleContent" onclick="toggleContent()" class="text-blue-500 hover:text-blue-700 mt-1 text-sm hidden">Ver más</button>
+            <div>
+                <div class="flex items-center gap-4 border-b pb-4 mb-4">
+                    
+<a id="postProfileLink" href="#">
+    <img id="postProfileImage" src="" alt="Avatar del autor" class="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-gray-300">
+</a>
+                    <div>
+                        <h2 id="postAuthor" class="font-semibold text-lg sm:text-xl text-gray-800">Nombre del Autor</h2>
+                        <p id="postInterest" class="text-blue-600 text-base font-semibold"></p> <!-- Aquí se muestra el interés -->
+                        <p id="postContent" class="text-gray-600 text-sm mt-1 overflow-hidden max-h-20" data-expanded="false" style="word-break: break-word;"></p>
+                        <button id="toggleContentButton" onclick="toggleContent()" class="text-blue-500 hover:text-blue-700 mt-1 text-sm hidden">Ver más</button>
+                    </div>
                 </div>
             </div>
             
-            <!-- Sección de comentarios -->
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Comentarios:</h3>
-            <div id="commentsContainer" class="space-y-4 max-h-[40vh] overflow-y-auto pr-2 scrollbar-hide mb-4">
-                <!-- Aquí se cargan los comentarios -->
-            </div>
-
-            <!-- Formulario para añadir comentarios -->
-            <form id="commentForm" onsubmit="submitComment(event)" class="mt-auto flex items-center gap-3 border-t pt-4">
-                <img src="{{ user['profile_image'] }}" alt="Tu Avatar" class="w-8 h-8 rounded-full bg-gray-300">
-                <div class="flex-1 relative">
-                    <input type="text" name="comment_content" id="commentInput" placeholder="Escribe un comentario..." maxlength="30" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" required>
-                    <span id="charCount" class="absolute right-3 top-2 text-gray-500 text-sm">30</span>
+            <div class="flex flex-col h-[50vh]">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Comentarios:</h3>
+                
+                <div id="commentsContainer" class="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
+                    <template id="commentTemplate">
+                        <div class="comment-item flex items-start gap-4 relative">
+                            <!-- Enlace al perfil con condicional para verificar si userId está presente -->
+                            <a href="#" class="avatar-link">
+                                <img src="default-avatar.png" alt="Avatar" class="comment-avatar w-10 h-10 rounded-full border border-gray-300">
+                            </a>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800"></p>
+                                <p class="text-sm text-gray-600"></p>
+                                <p class="text-xs text-gray-500"></p>
+                            </div>
+                            <span class="interest-tag absolute top-0 right-0 bg-blue-500 text-white text-xs font-semibold rounded-full px-2 py-0.5 m-2">Interest</span>
+                        </div>
+                    </template>
                 </div>
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Comentar</button>
-            </form>
+                
+                
+
+                <!-- Formulario para añadir comentarios -->
+                <form id="commentForm" onsubmit="submitComment(event)" class="mt-4 flex items-center gap-3 border-t pt-4">
+                    <img src="{{ user['profile_image'] }}" alt="Avatar" class="w-8 h-8 rounded-full bg-gray-300">
+                    <div class="flex-1 relative">
+                        <input type="text" name="comment_content" id="commentInput" placeholder="Escribe un comentario..." maxlength="50" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" required>
+                        <span id="charCount" class="absolute right-3 top-2 text-gray-500 text-sm">50</span>
+                    </div>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Comentar</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 
 
+
+
+
         <script>
             const commentInput = document.getElementById('commentInput');
     const charCount = document.getElementById('charCount');
-    const maxChars = 30;
+    const maxChars = 50;
 
     commentInput.addEventListener('input', () => {
         const remaining = maxChars - commentInput.value.length;
@@ -288,21 +283,28 @@
         
             cards.forEach(card => observer.observe(card));
         
-            function openCommentModal(postID, author, content, imageSrc, profileImage) {
-                const modal = document.getElementById('commentModal');
-                modal.style.display = 'flex';
-                document.body.classList.add('modal-open'); // Evita el scroll del fondo
-        
-                document.getElementById('postImage').src = imageSrc;
-                document.getElementById('postProfileImage').src = profileImage;
-                document.getElementById('postAuthor').innerText = author;
-                document.getElementById('postContent').innerText = content;
-        
-                const form = document.getElementById('commentForm');
-                form.action = `/add_comment/${postID}`;
-        
-                loadComments(postID);
-            }
+            function openCommentModal(postID, author, content, imageSrc, profileImage, interest, userID) {
+    const modal = document.getElementById('commentModal');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open'); // Evita el scroll del fondo
+
+    document.getElementById('postImage').src = imageSrc;
+    document.getElementById('postProfileImage').src = profileImage;
+    document.getElementById('postAuthor').innerText = author;
+    document.getElementById('postContent').innerText = content;
+    document.getElementById('postInterest').innerText = interest; // Mostrar el interés aquí
+
+    // Actualiza el enlace al perfil
+    const profileLink = document.getElementById('postProfileLink');
+    profileLink.href = `/profile/${userID}`;
+
+    const form = document.getElementById('commentForm');
+    form.action = `/add_comment/${postID}`;
+
+    loadComments(postID);
+}
+
+
         
             function closeCommentModal(event) {
                 const modal = document.getElementById('commentModal');
@@ -313,28 +315,45 @@
             }
         
             function loadComments(postID) {
-                const commentsContainer = document.getElementById('commentsContainer');
-                commentsContainer.innerHTML = '';
-        
-                fetch(`/get_comments/${postID}`)
-                    .then(response => response.json())
-                    .then(comments => {
-                        comments.forEach(comment => {
-                            const commentItem = document.createElement('div');
-                            commentItem.classList.add('comment-item');
-                            commentItem.innerHTML = `
-                                <img src="${comment.profile_image}" alt="Avatar" class="comment-avatar">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-800">${comment.Name}</p>
-                                    <p class="text-sm text-gray-600">${comment.Content}</p>
-                                    <p class="text-xs text-gray-500">${new Date(comment.CommentDate).toLocaleString()}</p>
-                                </div>
-                            `;
-                            commentsContainer.appendChild(commentItem);
-                        });
-                    })
-                    .catch(error => console.error('Error al cargar los comentarios:', error));
-            }
+    const commentsContainer = document.getElementById('commentsContainer');
+    commentsContainer.innerHTML = '';
+
+    fetch(`/get_comments/${postID}`)
+        .then(response => response.json())
+        .then(comments => {
+            comments.forEach(comment => {
+                const commentItem = document.createElement('div');
+                commentItem.classList.add('comment-item', 'flex', 'items-start', 'gap-4', 'relative');
+
+                // Formatear la hora extrayéndola directamente de la cadena de fecha/hora
+                const commentDate = new Date(comment.CommentDate);
+                const hours = commentDate.getUTCHours(); // Obtener la hora sin convertir a la zona horaria local
+                const minutes = commentDate.getUTCMinutes();
+                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+                // Crear el enlace al perfil con el user_id
+                const profileLink = `/profile/${comment.UserID || '#'}`;
+
+                commentItem.innerHTML = `
+                    <a href="${profileLink}" class="avatar-link">
+                        <img src="${comment.profile_image || 'default-avatar.png'}" alt="Avatar" class="comment-avatar w-10 h-10 rounded-full border border-gray-300">
+                    </a>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">${comment.Name || 'Usuario'}</p>
+                        <p class="text-sm text-gray-600">${comment.Content || ''}</p>
+                        <p class="text-xs text-gray-500">A las ${formattedTime}</p>
+                    </div>
+                    <span class="interest-tag">${comment.interest || 'Sin interés definido'}</span>
+                `;
+                
+                commentsContainer.appendChild(commentItem);
+            });
+        })
+        .catch(error => console.error('Error al cargar los comentarios:', error));
+}
+
+
+
         
             function submitComment(event) {
                 event.preventDefault();
@@ -356,6 +375,97 @@
                 })
                 .catch(error => console.error('Error al enviar el comentario:', error));
             }
+            function toggleContent() {
+    const contentElement = document.getElementById('postContent');
+    const buttonElement = document.getElementById('toggleContentButton');
+
+    // Alterna el estado de expansión y ajusta los estilos
+    const isExpanded = contentElement.getAttribute('data-expanded') === 'true';
+    contentElement.setAttribute('data-expanded', !isExpanded);
+
+    if (isExpanded) {
+        contentElement.classList.add('overflow-hidden', 'max-h-20');
+        buttonElement.textContent = 'Ver más';
+    } else {
+        contentElement.classList.remove('overflow-hidden', 'max-h-20');
+        buttonElement.textContent = 'Ver menos';
+    }
+}
+
+// Muestra el botón "Ver más" si el contenido excede el límite inicial
+document.addEventListener("DOMContentLoaded", function() {
+    const contentElement = document.getElementById('postContent');
+    const buttonElement = document.getElementById('toggleContentButton');
+
+    if (contentElement.scrollHeight > contentElement.clientHeight) {
+        buttonElement.classList.remove('hidden');
+    }
+});
+document.addEventListener("DOMContentLoaded", function() {
+    // Selecciona todos los elementos que contienen las fechas de las publicaciones
+    const dateElements = document.querySelectorAll('.post-date');
+
+    dateElements.forEach(element => {
+        const date = element.getAttribute('data-date'); // Asume que la fecha está almacenada en un atributo data
+        element.textContent = moment(date).fromNow(); // Convierte la fecha a formato relativo
+    });
+});
+
+function openImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalContent = document.getElementById('imageModalContent');
+    const modalImage = document.getElementById('modalImage');
+
+    modalImage.src = imageSrc;  // Asigna la imagen al modal
+    modal.classList.remove('hidden');  // Muestra el modal
+    document.body.classList.add('modal-open');  // Desactiva el scroll del fondo
+    
+    // Añade la animación de entrada
+    modalContent.classList.remove('scale-out');
+    modalContent.classList.add('scale-in', 'transition-all');
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    const modalContent = document.getElementById('imageModalContent');
+
+    // Añade la animación de salida
+    modalContent.classList.remove('scale-in');
+    modalContent.classList.add('scale-out');
+    
+    // Espera a que termine la animación antes de ocultar el modal
+    setTimeout(() => {
+        modal.classList.add('hidden');  // Oculta el modal
+        document.body.classList.remove('modal-open');  // Reactiva el scroll del fondo
+    }, 300);  // La duración debe coincidir con la de la transición
+}
+function toggleLike(postId) {
+    const likeButton = document.getElementById(`like-btn-${postId}`);
+    const likeIcon = document.getElementById(`like-icon-${postId}`);
+    const likeCount = document.getElementById(`like-count-${postId}`);
+    const isLiked = likeIcon.classList.contains('bi-heart-fill');
+
+    // Llamada a la API para hacer "like" o "unlike" según el estado actual
+    fetch(`/${isLiked ? 'unlike' : 'like'}_post/${postId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Alternar el ícono y actualizar el contador de likes
+            likeIcon.classList.toggle('bi-heart');
+            likeIcon.classList.toggle('bi-heart-fill');
+            likeCount.textContent = data.like_count;
+        }
+    })
+    .catch(error => console.error('Error al dar like:', error));
+}
+
+
+
         </script>
     </div>
 </body>

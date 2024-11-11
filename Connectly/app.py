@@ -52,32 +52,55 @@ def login():
 
 @app.route('/profile/<int:user_id>')
 def profile(user_id):
-    if 'user_id' not in session or session['user_id'] != user_id:
-        return redirect(url_for('login'))
+    current_user_id = session.get('user_id')
+    is_own_profile = (current_user_id == user_id)
 
+    # Obtener datos del perfil visitado
     user_data, same_interest_users = community_data_instance.get_user_profile(user_id)
-    current_user_id = session['user_id']
-    
     post_count = community_data_instance.get_post_count(user_id)
     follower_count = community_data_instance.get_follower_count(user_id)
     following_count = community_data_instance.get_following_count(user_id)
-    
-    recommended_users = community_data_instance.get_user_recommendations(user_id)
 
+    # Recomendaciones de usuarios (solo para el perfil propio)
+    recommended_users = community_data_instance.get_user_recommendations(user_id) if is_own_profile else []
+
+    # Verificar si el usuario autenticado sigue al perfil visitado
+    is_following = community_data_instance.is_following(current_user_id, user_id) if current_user_id else False
+
+    # Obtener seguidores y seguidos del perfil visitado
+    followers = community_data_instance.get_followers(user_id, current_user_id)
+    following = community_data_instance.get_following(user_id, current_user_id)
+
+    # Verificar si el usuario autenticado sigue a usuarios con intereses similares
     for similar_user in same_interest_users:
-        similar_user['is_following'] = community_data_instance.is_following(current_user_id, similar_user['user_id'])
+        similar_user['is_following'] = community_data_instance.is_following(current_user_id, similar_user['user_id']) if current_user_id else False
 
+    # Obtener publicaciones del usuario visitado
     query = text("""
         SELECT PostID, Content, PostDate, Image
         FROM posts
         WHERE UserID = :user_id
         ORDER BY PostDate DESC
     """)
-    
     with engine.connect() as connection:
         user_posts = connection.execute(query, {"user_id": user_id}).fetchall()
 
-    return render_template('profile.html', user=user_data, similar_users=same_interest_users, user_posts=user_posts, recommended_users=recommended_users, post_count=post_count, follower_count=follower_count, following_count=following_count)
+    return render_template(
+        'profile.html',
+        user=user_data,
+        similar_users=same_interest_users,
+        user_posts=user_posts,
+        recommended_users=recommended_users,
+        post_count=post_count,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_own_profile=is_own_profile,
+        is_following=is_following,
+        followers=followers,
+        following=following
+    )
+
+
 
 @app.route('/create_post', methods=['GET', 'POST'])
 def create_post():
@@ -158,77 +181,116 @@ def delete_post(post_id):
     return redirect(url_for('profile', user_id=user_id))
 
 
-@app.route('/follow/<int:user_id>', methods=['POST'])
-def follow(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    follower_id = session['user_id']
-    
-    if follower_id == user_id:
-        return redirect(url_for('profile', user_id=user_id))
-    
-    success = community_data_instance.follow_user(follower_id, user_id)
-    
-    if success:
-        return redirect(url_for('profile', user_id=follower_id))
-    else:
-        return render_template('profile.html', error="No se pudo seguir al usuario.")
-
-
-@app.route('/unfollow/<int:user_id>', methods=['POST'])
-def unfollow(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    follower_id = session['user_id']
-    
-    if follower_id == user_id:
-        return redirect(url_for('profile', user_id=follower_id))
-    
-    success = community_data_instance.unfollow_user(follower_id, user_id)
-    
-    if success:
-        return redirect(url_for('profile', user_id=follower_id))
-    else:
-        return render_template('profile.html', error="No se pudo dejar de seguir al usuario.")
-    
 @app.route('/followers/<int:user_id>')
 def followers(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
-    followers_list = community_data_instance.get_followers(user_id)
+
     current_user_id = session['user_id']
-    
+    followers_list = community_data_instance.get_followers(user_id, current_user_id)
+    user_data, _ = community_data_instance.get_user_profile(user_id)
+
+    # Asegura que cada seguidor tenga el estado 'follows_authenticated_user' y 'is_following'
     processed_followers = []
     for follower in followers_list:
-        follower_dict = {
-            "user_id": follower.UserID,
-            "name": follower.Name,
-            "profile_image": follower.profile_image,
-            "is_following": community_data_instance.is_following(current_user_id, follower.UserID)
+        follower_data = {
+            "user_id": follower["user_id"],
+            "name": follower["name"],
+            "profile_image": follower["profile_image"],
+            "is_following": community_data_instance.is_following(current_user_id, follower["user_id"]),
+            "follows_authenticated_user": community_data_instance.is_following(follower["user_id"], current_user_id)
         }
-        processed_followers.append(follower_dict)
-    
-    return render_template('followers.html', followers=processed_followers)
+        processed_followers.append(follower_data)
+
+    return render_template('followers.html', followers=processed_followers, user=user_data)
+
 
 
 @app.route('/following/<int:user_id>')
 def following(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
-    following_list = community_data_instance.get_following(user_id)
-    
-    return render_template('following.html', following=following_list, user_id=user_id)
 
+    current_user_id = session['user_id']
+    following_list = community_data_instance.get_following(user_id, current_user_id)
+    user_data, _ = community_data_instance.get_user_profile(user_id)
+    is_own_profile = (current_user_id == user_id)
+
+    return render_template('following.html', following=following_list, user=user_data, is_own_profile=is_own_profile)
+
+
+
+@app.route('/follow/<int:user_id>', methods=['POST'])
+def follow(user_id):
+    if 'user_id' not in session:
+        return jsonify(success=False, error="Usuario no autenticado.")
+
+    follower_id = session['user_id']
+
+    # Evitar que el usuario se siga a sí mismo
+    if follower_id == user_id:
+        return jsonify(success=False, error="No puedes seguirte a ti mismo.")
+
+    success = community_data_instance.follow_user(follower_id, user_id)
+
+    if success:
+        return jsonify(
+            success=True,
+            is_profile_visited=(follower_id != user_id),  # True si el usuario está viendo otro perfil
+            is_logged_in_user=(follower_id == session['user_id'])  # True si el usuario es el autenticado
+        )
+    else:
+        return jsonify(success=False, error="No se pudo seguir al usuario.")
+
+@app.route('/unfollow/<int:user_id>', methods=['POST'])
+def unfollow(user_id):
+    if 'user_id' not in session:
+        return jsonify(success=False, error="Usuario no autenticado.")
+
+    follower_id = session['user_id']
+
+    # Evitar que el usuario se deje de seguir a sí mismo
+    if follower_id == user_id:
+        return jsonify(success=False, error="No puedes dejar de seguirte a ti mismo.")
+
+    success = community_data_instance.unfollow_user(follower_id, user_id)
+
+    if success:
+        return jsonify(
+            success=True,
+            is_profile_visited=(follower_id != user_id),
+            is_logged_in_user=(follower_id == session['user_id'])
+        )
+    else:
+        return jsonify(success=False, error="No se pudo dejar de seguir al usuario.")
+
+    
 @app.route('/get_comments/<int:post_id>', methods=['GET'])
 def get_comments(post_id):
     comments = community_data_instance.get_comments_for_post(post_id)
     return jsonify(comments)
 
-# Ruta para agregar un comentario a un post específico
+@app.route('/like_post/<int:post_id>', methods=['POST'])
+def like_post(post_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session['user_id']
+    community_data_instance.like_post(post_id, user_id)
+    like_count = community_data_instance.get_like_count(post_id)
+    return jsonify({"success": True, "like_count": like_count})
+
+@app.route('/unlike_post/<int:post_id>', methods=['POST'])
+def unlike_post(post_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session['user_id']
+    community_data_instance.unlike_post(post_id, user_id)
+    like_count = community_data_instance.get_like_count(post_id)
+    return jsonify({"success": True, "like_count": like_count})
+
+
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
     if 'user_id' not in session:
@@ -240,7 +302,9 @@ def add_comment(post_id):
     if content:
         community_data_instance.add_comment(post_id, user_id, content)
         return jsonify({"success": True})
+    
     return jsonify({"error": "No content provided"}), 400
+
 
 @app.route('/home')
 def index():
@@ -248,7 +312,7 @@ def index():
     user_data, _ = community_data_instance.get_user_profile(user_id) if user_id else (None, None)
 
     query = text("""
-        SELECT p.PostID, p.Content, p.PostDate, p.Image, u.Name, u.profile_image
+        SELECT p.PostID, p.Content, p.PostDate, p.Image, u.Name, u.profile_image, u.UserID, u.Interests
         FROM posts p
         JOIN social_media_users u ON p.UserID = u.UserID
         ORDER BY p.PostDate DESC
@@ -256,7 +320,6 @@ def index():
     with engine.connect() as connection:
         posts_raw = connection.execute(query).fetchall()
 
-    # Convertimos los resultados a una lista de diccionarios
     posts = [
         {
             "PostID": post[0],
@@ -264,7 +327,11 @@ def index():
             "PostDate": post[2],
             "Image": post[3],
             "Name": post[4],
-            "profile_image": post[5]
+            "profile_image": post[5],
+            "UserID": post[6],  # Incluye el UserID aquí
+            "interest": post[7].split(', ')[0].strip(" '\""),  # Solo el primer interés
+            "like_count": community_data_instance.get_like_count(post[0]),
+            "is_post_liked": community_data_instance.is_post_liked(post[0], user_id) if user_id else False
         }
         for post in posts_raw
     ]

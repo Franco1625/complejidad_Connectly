@@ -150,7 +150,7 @@ class CommunityData:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
     
-    def get_followers(self, user_id):
+    def get_followers(self, user_id, current_user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image
             FROM social_media_users u
@@ -159,10 +159,17 @@ class CommunityData:
         """)
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id})
-            return [row for row in result]
+            return [
+                {
+                    "user_id": row.UserID,
+                    "name": row.Name,
+                    "profile_image": row.profile_image,
+                    "is_following": self.is_following(current_user_id, row.UserID) if current_user_id else False
+                }
+                for row in result
+            ]
 
-
-    def get_following(self, user_id):
+    def get_following(self, user_id, current_user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image
             FROM social_media_users u
@@ -170,7 +177,17 @@ class CommunityData:
             WHERE f.follower_id = :user_id
         """)
         with self.engine.connect() as connection:
-            return connection.execute(query, {"user_id": user_id}).fetchall()
+            result = connection.execute(query, {"user_id": user_id})
+            return [
+                {
+                    "user_id": row.UserID,
+                    "name": row.Name,
+                    "profile_image": row.profile_image,
+                    "is_following": self.is_following(current_user_id, row.UserID) if current_user_id else False
+                }
+                for row in result
+            ]
+               
         
     def add_comment(self, post_id, user_id, content):
         query = text("""
@@ -183,7 +200,7 @@ class CommunityData:
 
     def get_comments_for_post(self, post_id):
         query = text("""
-            SELECT c.CommentID, c.Content, c.CommentDate, u.Name, u.profile_image
+            SELECT c.CommentID, c.Content, c.CommentDate, u.Name, u.profile_image, u.UserID, u.Interests
             FROM comments c
             JOIN social_media_users u ON c.UserID = u.UserID
             WHERE c.PostID = :post_id
@@ -191,4 +208,50 @@ class CommunityData:
         """)
         with self.engine.connect() as connection:
             result = connection.execute(query, {"post_id": post_id}).fetchall()
-            return [{"CommentID": row.CommentID, "Content": row.Content, "CommentDate": row.CommentDate, "Name": row.Name, "profile_image": row.profile_image} for row in result]
+            return [
+                {
+                    "CommentID": row.CommentID,
+                    "UserID": row.UserID,  # Asegúrate de incluir el UserID aquí
+                    "Content": row.Content,
+                    "CommentDate": row.CommentDate,
+                    "Name": row.Name,
+                    "profile_image": row.profile_image,
+                    "interest": row.Interests.split(', ')[0].strip("'\"") if row.Interests else None
+                }
+                for row in result
+            ]
+
+
+    def like_post(self, post_id: int, user_id: int):
+        query = text("""
+            INSERT IGNORE INTO post_likes (PostID, UserID)
+            VALUES (:post_id, :user_id)
+        """)
+        with self.SessionLocal() as session:
+            session.execute(query, {"post_id": post_id, "user_id": user_id})
+            session.commit()
+    
+    def unlike_post(self, post_id: int, user_id: int):
+        query = text("""
+            DELETE FROM post_likes
+            WHERE PostID = :post_id AND UserID = :user_id
+        """)
+        with self.SessionLocal() as session:
+            session.execute(query, {"post_id": post_id, "user_id": user_id})
+            session.commit()
+    
+    def is_post_liked(self, post_id: int, user_id: int):
+        query = text("""
+            SELECT 1 FROM post_likes
+            WHERE PostID = :post_id AND UserID = :user_id
+        """)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"post_id": post_id, "user_id": user_id}).fetchone()
+        return result is not None
+    
+    def get_like_count(self, post_id: int):
+        query = text("SELECT COUNT(*) FROM post_likes WHERE PostID = :post_id")
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"post_id": post_id}).scalar()
+        return result
+    
