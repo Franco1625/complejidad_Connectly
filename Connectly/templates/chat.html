@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
+</head>
+<body class="bg-gray-100 font-[Poppins]">
+<div class="flex h-screen">
+   <div class="lg:w-[300px] fixed lg:relative inset-y-0 z-40 bg-gray-900">
+        {% include 'sidebar.html' %}
+    </div>  
+    <!-- Main Content -->
+    <div class="flex flex-col w-full lg:ml-[50px] p-4 lg:p-8 space-y-4 mt-16 lg:mt-4">
+        <div class="flex flex-1 flex-col lg:flex-row space-x-0 lg:space-x-6 space-y-4 lg:space-y-0 ">
+            <!-- Lista de usuarios mutuos -->
+            <div class="lg:w-1/5 w-full bg-white p-4 rounded-lg shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4 hidden lg:block">Contactos</h3>
+                <div class="flex lg:flex-col lg:space-y-2 lg:space-x-0 space-x-4 overflow-x-auto lg:overflow-visible">
+                    {% for user in mutual_followers %}
+                        <a href="{{ url_for('chat', user_id=user['user_id']) }}"
+                           class="flex items-center p-3 rounded-lg hover:bg-gray-100 {% if user.user_id == selected_user_id %}bg-blue-50{% endif %} lg:flex-col">
+                            <img src="{{ user['profile_image'] }}" alt="{{ user['name'] }}" class="w-12 h-12 rounded-full">
+                            <span class="text-xs text-center mt-2 hidden lg:block">{{ user['name'] }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Área de mensajes -->
+            <div class="flex flex-col flex-1 bg-white rounded-lg shadow-lg relative">
+                <div class="flex items-center mb-4 p-6 border-b pb-4">
+                    {% if selected_user_id %}
+                        {% set selected_user = mutual_followers | selectattr('user_id', 'equalto', selected_user_id) | first %}
+                        <img src="{{ selected_user.profile_image }}" alt="{{ selected_user.name }}" class="w-14 h-14 rounded-full mr-4">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800">{{ selected_user.name }}</h3>
+                            <p class="text-sm text-gray-500">{{ selected_user.interest }}</p>
+                        </div>
+                    {% else %}
+                        <h3 class="text-lg font-semibold text-gray-700">Selecciona un usuario para iniciar el chat</h3>
+                    {% endif %}
+                </div>
+
+                <!-- Mostrar mensajes -->
+                <div id="chat-box" class="flex flex-col space-y-3 overflow-y-auto h-[60vh] lg:h-[75vh] mb-4 pr-2">
+                    {% if messages|length == 0 %}
+                        <p id="no-messages" class="text-center text-gray-500 mt-10">No hay mensajes en esta conversación. ¡Inicia una conversación!</p>
+                    {% else %}
+                        {% for message in messages %}
+                            <div class="flex items-start {% if message.sender_id == session['user_id'] %}justify-end{% else %}justify-start{% endif %}">
+                                {% if message.sender_id != session['user_id'] %}
+                                    <img src="{{ selected_user.profile_image }}" alt="{{ selected_user.name }}" class="w-12 h-12 rounded-full ml-4 mr-4">
+                                {% endif %}
+                                <div class="p-3 rounded-2xl {% if message.sender_id == session['user_id'] %}bg-blue-100 text-gray-800 mr-4 {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                    <span>{{ message.content }}</span>
+                                    {% if message.image %}
+                                    <img src="{{ message.image }}" alt="Imagen del mensaje" class="mt-2 w-64 h-auto rounded-md cursor-pointer" onclick="openImageModal('{{ message.image }}')">
+                                {% endif %}
+                                
+                                    <small class="block text-xs text-gray-500 mt-1">{{ message.sent_at.strftime('%H:%M:%S') }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% if selected_user_id %}
+                    <div class="flex flex-col sticky bottom-0 bg-white ">
+                        <!-- Preview de Imagen Mejorado -->
+                        <div id="image-preview-container" class="relative hidden w-full max-w-xs mx-auto bg-gray-100 rounded-lg p-2 shadow-lg hover:shadow-2xl transition duration-300 ease-in-out">
+                            <img id="image-preview" class="w-full h-full rounded-lg object-cover border-4 border-white">
+                            <button onclick="removeImage()" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition duration-200 ease-in-out focus:outline-none">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Campo para enviar mensaje -->
+                {% if selected_user_id %}
+
+                        <!-- Input de Mensaje y Botones -->
+                        <div class="flex items-center">
+                            <input type="text" id="message-input" class="flex-grow border border-gray-300 rounded-full px-4 py-2 mr-3 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Escribe un mensaje...">
+                            <label for="image-input" class="cursor-pointer mr-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-600 hover:text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"/>
+                                </svg>
+                            </label>
+                            <input type="file" id="image-input" class="hidden" accept="image/*" onchange="previewImage(event)">
+                            <button onclick="sendMessage()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-full">Enviar</button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de imagen -->
+<div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden" onclick="closeImageModal()">
+    <img id="modal-image" class="max-w-full max-h-full lg:max-w-3xl lg:max-h-[90vh] ">
+</div>
+
+
+<script>
+  const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+    let selectedUserId = {{ selected_user_id or 'null' }};
+    const chatBox = document.getElementById('chat-box');
+    const imageInput = document.getElementById('image-input');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+
+    function previewImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage() {
+        imageInput.value = "";
+        imagePreview.src = "";
+        imagePreviewContainer.classList.add('hidden');
+    }
+
+    function joinChatRoom(userId) {
+        selectedUserId = userId;
+        socket.emit('join', { user_id: {{ session['user_id'] }}, selected_user_id: selectedUserId });
+    }
+
+    if (selectedUserId) {
+        joinChatRoom(selectedUserId);
+    }
+
+    function removeNoMessagesText() {
+        const noMessagesText = document.getElementById('no-messages');
+        if (noMessagesText) {
+            noMessagesText.remove();
+        }
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('message-input');
+        const content = messageInput.value.trim();
+
+        if (!content && !imageInput.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('receiver_id', selectedUserId);
+        if (imageInput.files[0]) {
+            formData.append('image', imageInput.files[0]);
+        }
+
+        fetch('/send_message', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                messageInput.value = '';
+                removeImage(); // Ocultar la vista previa después de enviar
+            } else {
+                console.error('Error al enviar el mensaje:', data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString(); // Formato solo de hora
+    }
+
+    function appendMessage(content, isSender, timestamp, image = null, profileImage = null) {
+        removeNoMessagesText();
+
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('flex', 'items-start', isSender ? 'justify-end' : 'justify-start', 'mb-4');
+
+        if (!isSender && profileImage) {
+            const profileImageElement = document.createElement('img');
+            profileImageElement.src = profileImage;
+            profileImageElement.alt = "Imagen de perfil";
+            profileImageElement.classList.add('w-12', 'h-12', 'rounded-full', 'mr-4', 'ml-4');
+            messageContainer.appendChild(profileImageElement);
+        }
+
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('p-3', 'rounded-2xl', 'max-w-xs', isSender ? 'bg-blue-100' : 'bg-gray-100', isSender ? 'text-gray-800' : 'text-gray-700', isSender ? 'mr-4' : 'ml-0');
+
+        let messageContent = `<span>${content}</span>`;
+        if (image) {
+            messageContent += `<img src="${image}" alt="Imagen" class="mt-4 w-64 h-auto rounded-md cursor-pointer" onclick="openImageModal('${image}')">`;
+        }
+
+        messageElement.innerHTML = `
+            ${messageContent}
+            <small class="block text-xs text-gray-500 mt-1">${formatTimestamp(timestamp)}</small>
+        `;
+
+        messageContainer.appendChild(messageElement);
+        chatBox.appendChild(messageContainer);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    socket.on('receive_message', function(data) {
+        const isSender = data.sender_id === {{ session['user_id'] }};
+        appendMessage(data.content, isSender, data.sent_at, data.image, data.profile_image);
+    });
+
+    document.getElementById('message-input').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    function openImageModal(src) {
+        document.getElementById('modal-image').src = src;
+        document.getElementById('image-modal').classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+        document.getElementById('image-modal').classList.add('hidden');
+    }
+</script>
+
+</body>
+</html>

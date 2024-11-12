@@ -68,101 +68,103 @@
         </div>
         <div id="modalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 hidden z-20" onclick="closeModal(event)">
             <span class="absolute top-4 right-4 text-white text-3xl cursor-pointer" onclick="closeModal(event)">×</span>
-            <div id="modalContentContainer" class="bg-white p-6 rounded-lg w-11/12 max-w-lg md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto" onclick="event.stopPropagation()">
+            <div id="modalContentContainer" class="bg-white p-6 rounded-lg w-11/12 max-w-4xl md:max-w-2xl lg:max-w-3xl max-h-[80%] overflow-y-auto" onclick="event.stopPropagation()">
                 <div id="modalContent">Cargando...</div>
             </div>
         </div>
+        
         <!-- Publicaciones -->
         <div class="mb-8" 
-             x-data="{ 
-                currentSlide: 0, 
-                postsPerSlide: window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1, 
-                totalSlides: Math.ceil({{ user_posts|length }} / (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1)),
-                hasPosts: {{ 'true' if user_posts else 'false' }}
-            }" 
-             x-init="
-                window.addEventListener('resize', () => {
-                    postsPerSlide = window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1;
-                    totalSlides = Math.ceil({{ user_posts|length }} / postsPerSlide);
-                    currentSlide = Math.min(currentSlide, totalSlides - 1);
-                });
-            ">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">
-                {% if is_own_profile %}
-                    Mis Publicaciones
-                {% else %}
-                    Publicaciones de {{ user['name'] }}
-                {% endif %}
-            </h2>
-    
-            <template x-if="!hasPosts">
-                <div class="text-center">
-                    <p class="text-gray-600 mb-4">No tienes publicaciones recientes.</p>
-                    <p class="text-blue-500 cursor-pointer hover:underline" onclick="window.location.href='/create_post'">¡Crea tu primera publicación!</p>
-                </div>
-            </template>
-    
-            <div class="relative overflow-hidden group p-6" x-show="hasPosts">
-                <button @click="currentSlide = currentSlide > 0 ? currentSlide - 1 : totalSlides - 1" 
-                        class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 text-xl z-10 shadow-lg transition-all duration-200">
-                    &#10094;
-                </button>
-    
-                <div class="flex transition-transform duration-500 ease-out" 
-                     :style="`transform: translateX(-${currentSlide * 100}%)`">
-                    {% for post in user_posts %}
-                        <div :class="{ 'w-full sm:w-1/2 lg:w-1/3': true }" class="flex-shrink-0 p-2" style="width: calc(100% / postsPerSlide);">
-                            <div class="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-[1.02] card" style="min-height: 400px; overflow: hidden;">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div x-data="{ expanded: false, contentExceedsLimit: false }" x-init="
-                                        $nextTick(() => {
-                                            const content = $refs.content;
-                                            if (content.scrollHeight > 200) {
-                                                contentExceedsLimit = true;
-                                            }
-                                        });
-                                    ">
-                                        <p x-ref="content" class="text-gray-700 post-content" :class="expanded ? '' : 'line-clamp-4'" style="overflow-wrap: break-word;">
-                                            {{ post.Content }}
-                                        </p>
-                                        <button x-show="contentExceedsLimit" @click="expanded = !expanded" class="text-blue-500 text-sm mt-2">
-                                            <span x-show="!expanded">Ver más</span>
-                                            <span x-show="expanded">Ver menos</span>
-                                        </button>
-                                    </div>
-
-                                    {% if is_own_profile %}
-                                        <button @click="deletePost('{{ post.PostID }}')" class="text-red-500 hover:text-red-700 ml-4 text-2xl">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                                <p class="text-gray-500 text-sm">{{ post.PostDate.strftime('%Y-%m-%d %H:%M') }}</p>
-                                {% if post.Image %}
-                                    <div class="w-full h-72 overflow-hidden rounded-lg mt-4">
-                                        <img src="{{ post.Image }}" alt="Imagen del post" class="w-full h-full object-cover">
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-    
-                <button @click="currentSlide = currentSlide < totalSlides - 1 ? currentSlide + 1 : 0" 
-                        class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 text-xl z-10 shadow-lg transition-all duration-200">
-                    &#10095;
-                </button>
-    
-                <div class="flex justify-center mt-4 space-x-2">
-                    <template x-for="i in totalSlides">
-                        <div :class="{'bg-blue-500': i - 1 === currentSlide, 'bg-gray-300': i - 1 !== currentSlide}"
-                             class="w-3 h-3 rounded-full cursor-pointer transition-all duration-300"
-                             @click="currentSlide = i - 1"></div>
-                    </template>
-                </div>
-            </div>
-        </div>
- 
+     x-data="{ 
+        currentSlide: 0, 
+        postsPerSlide: window.innerWidth > 1200 ? 3 : window.innerWidth >= 640 ? 2 : 1, 
+        totalSlides: Math.ceil({{ user_posts|length }} / (window.innerWidth > 1200 ? 3 : window.innerWidth >= 640 ? 2 : 1)),
+        hasPosts: {{ 'true' if user_posts else 'false' }}
+    }" 
+     x-init="
+        window.addEventListener('resize', () => {
+            postsPerSlide = window.innerWidth > 1200 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+            totalSlides = Math.ceil({{ user_posts|length }} / postsPerSlide);
+            currentSlide = Math.min(currentSlide, totalSlides - 1);
+        });
+    ">
+       <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+           {% if is_own_profile %}
+               Mis Publicaciones
+           {% else %}
+               Publicaciones de {{ user['name'] }}
+           {% endif %}
+       </h2>
+   
+       <template x-if="!hasPosts">
+           <div class="text-center">
+               <p class="text-gray-600 mb-4">No tienes publicaciones recientes.</p>
+               <p class="text-blue-500 cursor-pointer hover:underline" onclick="window.location.href='/create_post'">¡Crea tu primera publicación!</p>
+           </div>
+       </template>
+   
+       <div class="relative overflow-hidden group p-6" x-show="hasPosts">
+           <button @click="currentSlide = currentSlide > 0 ? currentSlide - 1 : totalSlides - 1" 
+                   class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 text-xl z-10 shadow-lg transition-all duration-200">
+               &#10094;
+           </button>
+   
+           <div class="flex transition-transform duration-500 ease-out" 
+                :style="`transform: translateX(-${currentSlide * 100}%)`">
+               {% for post in user_posts %}
+                   <div :class="{ 'w-full sm:w-1/2 lg:w-1/3': true }" class="flex-shrink-0 p-2" :style="`width: calc(100% / ${postsPerSlide});`">
+                       <div class="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-[1.02] card" style="min-height: 400px; overflow: hidden;">
+                           <div class="flex justify-between items-start mb-4">
+                               <div x-data="{ expanded: false, contentExceedsLimit: false }" x-init="
+                                   $nextTick(() => {
+                                       const content = $refs.content;
+                                       if (content.scrollHeight > 200) {
+                                           contentExceedsLimit = true;
+                                       }
+                                   });
+                               ">
+                                   <p x-ref="content" class="text-gray-700 post-content" :class="expanded ? '' : 'line-clamp-4'" style="overflow-wrap: break-word;">
+                                       {{ post.Content }}
+                                   </p>
+                                   <button x-show="contentExceedsLimit" @click="expanded = !expanded" class="text-blue-500 text-sm mt-2">
+                                       <span x-show="!expanded">Ver más</span>
+                                       <span x-show="expanded">Ver menos</span>
+                                   </button>
+                               </div>
+   
+                               {% if is_own_profile %}
+                                   <button @click="deletePost('{{ post.PostID }}')" class="text-red-500 hover:text-red-700 ml-4 text-2xl">
+                                       <i class="bi bi-trash"></i>
+                                   </button>
+                               {% endif %}
+                           </div>
+                           <p class="text-gray-500 text-sm">{{ post.PostDate.strftime('%Y-%m-%d %H:%M') }}</p>
+                           {% if post.Image %}
+                               <div class="w-full h-72 overflow-hidden rounded-lg mt-4">
+                                   <img src="{{ post.Image }}" alt="Imagen del post" class="w-full h-full object-cover">
+                               </div>
+                           {% endif %}
+                       </div>
+                   </div>
+               {% endfor %}
+           </div>
+   
+           <button @click="currentSlide = currentSlide < totalSlides - 1 ? currentSlide + 1 : 0" 
+                   class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 text-xl z-10 shadow-lg transition-all duration-200">
+               &#10095;
+           </button>
+   
+           <div class="flex justify-center mt-4 space-x-2">
+               <template x-for="i in totalSlides">
+                   <div :class="{'bg-blue-500': i - 1 === currentSlide, 'bg-gray-300': i - 1 !== currentSlide}"
+                        class="w-3 h-3 rounded-full cursor-pointer transition-all duration-300"
+                        @click="currentSlide = i - 1"></div>
+               </template>
+           </div>
+       </div>
+   </div>
+   
+   {% if is_own_profile %}
 <div class="mb-8" 
      x-data="{ 
          currentSlide: 0, 
@@ -225,7 +227,7 @@
             </template>
         </div>
     </div>
-</div>
+</div> {% endif %}
 
 
 
@@ -252,7 +254,6 @@
 
 
     <script>
-     // Función para manejar seguimiento en recomendaciones y reflejar el cambio en todas las secciones y el contador
      function toggleRecommendationFollow(userId, buttonText = 'Seguir') {
         fetch(`/follow/${userId}`, {
             method: 'POST',
@@ -263,16 +264,16 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Ocultar en la sección de recomendaciones
+           
                 const recommendationContainer = document.getElementById(`recommendation-${userId}`);
                 if (recommendationContainer) {
                     recommendationContainer.style.display = 'none';
                 }
                 
-                // Incrementar el contador de "Seguidos"
+            
                 incrementFollowingCount();
 
-                // Sincronizar en todas las secciones
+              
                 syncFollowStatus(userId, true);
             } else {
                 alert(data.error || 'Ocurrió un error');
@@ -281,7 +282,7 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Función para seguir en la sección de "Usuarios con el mismo interés" y reflejar en otras secciones
+  
     function toggleFollow(userId, button) {
         fetch(`/follow/${userId}`, {
             method: 'POST',
@@ -292,16 +293,14 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Cambiar a "Dejar de seguir" y actualizar color del botón
+             
                 button.textContent = 'Dejar de seguir';
                 button.classList.remove('text-blue-500', 'hover:text-blue-700');
                 button.classList.add('text-red-500', 'hover:text-red-700');
                 button.setAttribute('onclick', `toggleUnfollow(${userId}, this)`);
 
-                // Incrementar el contador de "Seguidos"
                 incrementFollowingCount();
 
-                // Sincronizar en todas las secciones
                 syncFollowStatus(userId, true);
             } else {
                 alert(data.error || 'Ocurrió un error');
@@ -310,7 +309,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Función para dejar de seguir en la sección de "Usuarios con el mismo interés"
     function toggleUnfollow(userId, button) {
         fetch(`/unfollow/${userId}`, {
             method: 'POST',
@@ -321,16 +319,14 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Cambiar a "Seguir" y actualizar color del botón
+
                 button.textContent = 'Seguir';
                 button.classList.remove('text-red-500', 'hover:text-red-700');
                 button.classList.add('text-blue-500', 'hover:text-blue-700');
                 button.setAttribute('onclick', `toggleFollow(${userId}, this)`);
 
-                // Decrementar el contador de "Seguidos"
                 decrementFollowingCount();
 
-                // Sincronizar en todas las secciones
                 syncFollowStatus(userId, false);
             } else {
                 alert(data.error || 'Ocurrió un error');
@@ -339,7 +335,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Función para seguir en el perfil del usuario visitado y reflejar en otras secciones
     function toggleFollowProfile(userId, button) {
         fetch(`/follow/${userId}`, {
             method: 'POST',
@@ -357,7 +352,6 @@
                 
                 incrementFollowerCount();
 
-                // Sincronizar en todas las secciones
                 syncFollowStatus(userId, true);
             } else {
                 alert(data.error || 'Ocurrió un error');
@@ -366,7 +360,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Función para dejar de seguir en el perfil del usuario visitado
     function toggleUnfollowProfile(userId, button) {
         fetch(`/unfollow/${userId}`, {
             method: 'POST',
@@ -384,7 +377,6 @@
                 
                 decrementFollowerCount();
 
-                // Sincronizar en todas las secciones
                 syncFollowStatus(userId, false);
             } else {
                 alert(data.error || 'Ocurrió un error');
@@ -393,7 +385,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Incrementar y decrementar contadores de "Seguidores" y "Seguidos"
     function incrementFollowerCount() {
         const followerCountElement = document.getElementById('followerCount');
         if (followerCountElement) {
@@ -422,14 +413,13 @@
         }
     }
 
-    // Sincronizar estado de seguimiento en todas las secciones
     function syncFollowStatus(userId, isFollowing) {
         updateInterestSectionFollowButton(userId, isFollowing);
         updateRecommendationSectionFollowButton(userId, !isFollowing);
         updateProfileFollowButton(userId, isFollowing);
     }
 
-    // Actualizar botones en otras secciones
+
     function updateInterestSectionFollowButton(userId, isFollowing) {
         const button = document.getElementById(`followBtn-${userId}`);
         if (button) {
@@ -501,31 +491,31 @@
             document.body.style.overflow = '';
         }
     }
-        function deletePost(postId) {
-             if (!confirm('¿Estás seguro de que deseas eliminar esta publicación?')) return;
-     
-             document.getElementById('loader').style.display = 'block';
-     
-             fetch(`/delete_post/${postId}`, {
-                 method: 'POST'
-             })
-             .then(response => {
-                 if (response.ok) {
-                     window.location.reload();
-                 } else {
-                     alert('Error al eliminar la publicación.');
-                 }
-             })
-             .catch(error => console.error('Error:', error))
-             .finally(() => document.getElementById('loader').style.display = 'none');
-         }
-     
-         document.querySelectorAll('.card').forEach(card => {
-             const observer = new IntersectionObserver(entries => {
-                 entries.forEach(entry => entry.isIntersecting && entry.target.classList.add('card-visible'));
-             }, { threshold: 0.05 });
-             observer.observe(card);
-         });
+    function deletePost(postId) {
+         if (!confirm('¿Estás seguro de que deseas eliminar esta publicación?')) return;
+    
+         document.getElementById('loader').style.display = 'block';
+    
+         fetch(`/delete_post/${postId}`, {
+             method: 'POST'
+         })
+         .then(response => {
+             if (response.ok) {
+                 window.location.reload();
+             } else {
+                 alert('Error al eliminar la publicación.');
+             }
+         })
+         .catch(error => console.error('Error:', error))
+         .finally(() => document.getElementById('loader').style.display = 'none');
+     }
+    
+     document.querySelectorAll('.card').forEach(card => {
+         const observer = new IntersectionObserver(entries => {
+             entries.forEach(entry => entry.isIntersecting && entry.target.classList.add('card-visible'));
+         }, { threshold: 0.05 });
+         observer.observe(card);
+     });
      </script>
      
 </body>

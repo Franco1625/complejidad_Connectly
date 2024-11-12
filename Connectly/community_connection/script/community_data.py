@@ -168,7 +168,42 @@ class CommunityData:
                 }
                 for row in result
             ]
+    def get_mutual_followers(self, user_id):
+        query = text("""
+            SELECT u.UserID, u.Name, u.profile_image
+            FROM social_media_users u
+            JOIN user_follows f1 ON f1.follower_id = :user_id AND f1.followed_id = u.UserID
+            JOIN user_follows f2 ON f2.follower_id = u.UserID AND f2.followed_id = :user_id
+        """)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"user_id": user_id}).fetchall()
+        return [{"user_id": row.UserID, "name": row.Name, "profile_image": row.profile_image} for row in result]
 
+    def get_messages_between_users(self, user_id_1, user_id_2):
+        query = text("""
+            SELECT m.sender_id, m.receiver_id, m.content, m.image, m.sent_at, u.profile_image
+            FROM messages m
+            JOIN social_media_users u ON m.sender_id = u.UserID
+            WHERE (m.sender_id = :user_id_1 AND m.receiver_id = :user_id_2) 
+               OR (m.sender_id = :user_id_2 AND m.receiver_id = :user_id_1)
+            ORDER BY m.sent_at ASC
+        """)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"user_id_1": user_id_1, "user_id_2": user_id_2}).fetchall()
+        return [
+            {
+                "sender_id": row.sender_id,
+                "receiver_id": row.receiver_id,
+                "content": row.content,
+                "image": row.image,  # Imagen adjunta en el mensaje (si existe)
+                "sent_at": row.sent_at,
+                "profile_image": row.profile_image  # Imagen de perfil del remitente
+            }
+            for row in result
+        ]
+
+    
+        
     def get_following(self, user_id, current_user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image

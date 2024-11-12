@@ -1,14 +1,18 @@
-import os
+import os, uuid
 from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from datetime import datetime
 from community_connection.script.community_data import CommunityData
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 CORS(app, supports_credentials=True)
+
+# Configuración de Flask-SocketIO
+socketio = SocketIO(app)
 
 db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
 community_data_instance = CommunityData(db_url)
@@ -85,6 +89,7 @@ def profile(user_id):
     with engine.connect() as connection:
         user_posts = connection.execute(query, {"user_id": user_id}).fetchall()
 
+    # Pasar chat_user_id como el ID del perfil actual que estás visitando
     return render_template(
         'profile.html',
         user=user_data,
@@ -97,9 +102,9 @@ def profile(user_id):
         is_own_profile=is_own_profile,
         is_following=is_following,
         followers=followers,
-        following=following
+        following=following,
+        chat_user_id=user_id  # Pasar el `user_id` actual como `chat_user_id`
     )
-
 
 
 @app.route('/create_post', methods=['GET', 'POST'])
@@ -305,6 +310,113 @@ def add_comment(post_id):
     
     return jsonify({"error": "No content provided"}), 400
 
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    sender_id = session['user_id']
+    receiver_id = request.form.get('receiver_id')
+    content = request.form.get('content')
+    image_file = request.files.get('image')
+
+    # Obtener la imagen de perfil del remitente
+    query = text("SELECT profile_image FROM social_media_users WHERE UserID = :sender_id")
+    with engine.connect() as connection:
+        result = connection.execute(query, {"sender_id": sender_id}).fetchone()
+        profile_image = result.profile_image if result else None
+
+    # Guardar la imagen del mensaje en el almacenamiento
+    image_path = None
+    if image_file:
+        filename = f"{sender_id}_{int(datetime.timestamp(datetime.now()))}_{uuid.uuid4().hex}.png"
+        image_path = os.path.join(STORAGE_FOLDER, filename)
+        image_file.save(image_path)
+        image_path = f"/storage/{filename}"
+
+    # Guardar el mensaje en la base de datos
+    query = text("""
+        INSERT INTO messages (sender_id, receiver_id, content, image, sent_at)
+        VALUES (:sender_id, :receiver_id, :content, :image, NOW())
+    """)
+    with SessionLocal() as db_session:
+        db_session.execute(query, {
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "content": content,
+            "image": image_path
+        })
+        db_session.commit()
+
+    # Emitir el mensaje a través de SocketIO
+    socketio.emit('receive_message', {
+        'sender_id': sender_id,
+        'receiver_id': receiver_id,
+        'content': content,
+        'image': image_path,
+        'profile_image': profile_image,  # Incluye la imagen de perfil aquí
+        'sent_at': datetime.now().isoformat()
+    }, room=f'chat_{min(sender_id, int(receiver_id))}_{max(sender_id, int(receiver_id))}')
+
+    return jsonify({"success": True})
+
+
+
+
+@socketio.on('join')
+def on_join(data):
+    user_id = data['user_id']
+    selected_user_id = data.get('selected_user_id')
+    if selected_user_id:
+        room = f'chat_{min(user_id, selected_user_id)}_{max(user_id, selected_user_id)}'
+        join_room(room)
+
+@app.route('/get_messages/<int:user_id>', methods=['GET'])
+def get_messages(user_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    current_user_id = session['user_id']
+
+    # Verificar que ambos usuarios se sigan mutuamente
+    if not (community_data_instance.is_following(current_user_id, user_id) and community_data_instance.is_following(user_id, current_user_id)):
+        return jsonify({"error": "You need to follow each other to chat"}), 403
+
+    query = text("""
+        SELECT sender_id, receiver_id, content, sent_at
+        FROM messages
+        WHERE (sender_id = :current_user_id AND receiver_id = :user_id) 
+           OR (sender_id = :user_id AND receiver_id = :current_user_id)
+        ORDER BY sent_at ASC
+    """)
+    with engine.connect() as connection:
+        messages = connection.execute(query, {"current_user_id": current_user_id, "user_id": user_id}).fetchall()
+        messages_data = [
+            {"sender_id": msg.sender_id, "receiver_id": msg.receiver_id, "content": msg.content, "sent_at": msg.sent_at.isoformat()}
+            for msg in messages
+        ]
+    
+    return jsonify(messages_data)
+
+@app.route('/chat')
+def chat():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    current_user_id = session['user_id']
+    # Obtener usuarios con los que el usuario autenticado tiene una relación de seguimiento mutuo
+    mutual_followers = community_data_instance.get_mutual_followers(current_user_id)
+
+    # Obtén el ID del usuario seleccionado en la lista de chat (opcional)
+    selected_user_id = request.args.get('user_id', type=int)
+    messages = []
+
+    # Si hay un usuario seleccionado, carga los mensajes
+    if selected_user_id:
+        messages = community_data_instance.get_messages_between_users(current_user_id, selected_user_id)
+
+    return render_template('chat.html', mutual_followers=mutual_followers, messages=messages, selected_user_id=selected_user_id)
+
 
 @app.route('/home')
 def index():
@@ -349,4 +461,4 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
