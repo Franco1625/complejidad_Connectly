@@ -1,5 +1,5 @@
 import os, uuid
-from flask import Flask, render_template, redirect, url_for, request, session, send_from_directory, jsonify
+from flask import Flask, g, render_template, redirect, url_for, request, session, send_from_directory, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -65,6 +65,16 @@ def profile(user_id):
     follower_count = community_data_instance.get_follower_count(user_id)
     following_count = community_data_instance.get_following_count(user_id)
 
+    # Obtener el interés principal del usuario actual
+    user_interest = user_data['interest'] if user_data else None
+
+    # Filtro de género con interés
+    gender_filter = request.args.get('gender')
+    if gender_filter and user_interest:
+        same_interest_users = community_data_instance.get_users_by_gender_and_interest(
+            gender_filter, user_interest, current_user_id
+        )
+
     # Recomendaciones de usuarios (solo para el perfil propio)
     recommended_users = community_data_instance.get_user_recommendations(user_id) if is_own_profile else []
 
@@ -77,7 +87,9 @@ def profile(user_id):
 
     # Verificar si el usuario autenticado sigue a usuarios con intereses similares
     for similar_user in same_interest_users:
-        similar_user['is_following'] = community_data_instance.is_following(current_user_id, similar_user['user_id']) if current_user_id else False
+        similar_user['is_following'] = community_data_instance.is_following(
+            current_user_id, similar_user['user_id']
+        ) if current_user_id else False
 
     # Obtener publicaciones del usuario visitado
     query = text("""
@@ -106,6 +118,34 @@ def profile(user_id):
         chat_user_id=user_id  # Pasar el `user_id` actual como `chat_user_id`
     )
 
+
+@app.route('/filter_users', methods=['GET'])
+def filter_users():
+    gender = request.args.get('gender')
+    profile_user_id = request.args.get('profile_user_id', type=int)
+    current_user_id = session.get('user_id')
+
+    # Obtener el interés del perfil visitado
+    user_data, _ = community_data_instance.get_user_profile(profile_user_id)
+    user_interest = user_data['interest'] if user_data else None
+
+    if user_interest:
+        if gender:  # Filtrar por género
+            filtered_users = community_data_instance.get_users_by_gender_and_interest(
+                gender, user_interest, profile_user_id
+            )
+        else:  # No filtrar por género, devolver todos los usuarios con el mismo interés
+            filtered_users = [
+                user for user in community_data_instance.user_groups.values()
+                if user["interest"] == user_interest and user["user_id"] != profile_user_id
+            ]
+        # Agregar datos de seguimiento dinámicamente
+        for user in filtered_users:
+            user["is_following"] = community_data_instance.is_following(current_user_id, user["user_id"])
+    else:
+        filtered_users = []
+
+    return jsonify({"filtered_users": filtered_users})
 
 @app.route('/create_post', methods=['GET', 'POST'])
 def create_post():
@@ -397,6 +437,24 @@ def get_messages(user_id):
         ]
     
     return jsonify(messages_data)
+
+@app.before_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+    if user_id:
+        # Consulta para obtener los datos del usuario autenticado
+        query = text("SELECT UserID, username, profile_image FROM social_media_users WHERE UserID = :user_id")
+        with engine.connect() as connection:
+            user = connection.execute(query, {"user_id": user_id}).fetchone()
+            if user:
+                # Almacena los datos de usuario en `g.user` para usarlos en todas las plantillas
+                g.user = {
+                    "user_id": user.UserID,
+                    "username": user.username,
+                    "profile_image": user.profile_image
+                }
+    else:
+        g.user = None  # Usuario no autenticado
 
 @app.route('/chat')
 def chat():

@@ -10,38 +10,68 @@ class CommunityData:
         self.user_groups = self._load_user_groups(limit=1500)
 
     def _load_user_groups(self, limit=1500):
-        df = pd.read_sql(f'SELECT UserID, Name, Interests, profile_image FROM social_media_users LIMIT {limit}', con=self.engine)
+             df = pd.read_sql(
+                 f'SELECT UserID, Name, Interests, Gender, profile_image FROM social_media_users LIMIT {limit}',
+                 con=self.engine
+             )
 
-        G = nx.Graph()
-        interest_groups = {}
+             G = nx.Graph()
+             interest_groups = {}
 
-        for _, user in df.iterrows():
-            primary_interest = user['Interests'].split(', ')[0]
-            user_id = user['UserID']
+             for _, user in df.iterrows():
+                 primary_interest = user['Interests'].split(', ')[0]
+                 user_id = user['UserID']
 
-            G.add_node(user_id, name=user['Name'], interest=primary_interest, profile_image=user['profile_image'])
+                 G.add_node(user_id,
+                            name=user['Name'],
+                            interest=primary_interest,
+                            gender=user['Gender'],  # Agregar género al nodo
+                            profile_image=user['profile_image'])
 
-            if primary_interest not in interest_groups:
-                interest_groups[primary_interest] = []
-            interest_groups[primary_interest].append(user_id)
+                 if primary_interest not in interest_groups:
+                     interest_groups[primary_interest] = []
+                 interest_groups[primary_interest].append(user_id)
 
-        user_groups = {
-            user_id: {
-                "user_id": user_id,
-                "name": G.nodes[user_id]['name'],
-                "interest": G.nodes[user_id]['interest'],
-                "profile_image": G.nodes[user_id]['profile_image'],
-                "similar_users": [
-                    {"user_id": similar_user, "name": G.nodes[similar_user]['name'], "profile_image": G.nodes[similar_user]['profile_image']}
-                    for similar_user in interest_groups[G.nodes[user_id]['interest']]
-                    if similar_user != user_id
-                ]
+             user_groups = {
+                 user_id: {
+                     "user_id": user_id,
+                     "name": G.nodes[user_id]['name'],
+                     "interest": G.nodes[user_id]['interest'],
+                     "gender": G.nodes[user_id]['gender'],  # Incluir género aquí
+                     "profile_image": G.nodes[user_id]['profile_image'],
+                     "similar_users": [
+                         {
+                             "user_id": similar_user,
+                             "name": G.nodes[similar_user]['name'],
+                             "profile_image": G.nodes[similar_user]['profile_image']
+                         }
+                         for similar_user in interest_groups[G.nodes[user_id]['interest']]
+                         if similar_user != user_id
+                     ]
+                 }
+                 for user_id in G.nodes
+             }
+
+             self.interest_groups = interest_groups
+             return user_groups
+
+    
+    def get_users_by_gender_and_interest(self, gender, current_interest, current_user_id):
+        filtered_users = [
+            {
+                "user_id": user_data["user_id"],
+                "name": user_data["name"],
+                "interest": user_data["interest"],
+                "profile_image": user_data["profile_image"],
             }
-            for user_id in G.nodes
-        }
+            for user_id, user_data in self.user_groups.items()
+            if user_data["gender"] == gender
+            and user_data["interest"] == current_interest
+            and user_id != current_user_id  # Excluir al usuario actual
+        ]
+        return filtered_users
+        
 
-        self.interest_groups = interest_groups
-        return user_groups
 
     def get_user_profile(self, user_id):
         if user_id in self.user_groups:
@@ -50,6 +80,7 @@ class CommunityData:
             return user_data, similar_users
 
         return None, []
+
 
     def follow_user(self, follower_id, followed_id):
         if follower_id == followed_id:
@@ -170,14 +201,23 @@ class CommunityData:
             ]
     def get_mutual_followers(self, user_id):
         query = text("""
-            SELECT u.UserID, u.Name, u.profile_image
+            SELECT u.UserID, u.Name, u.profile_image, u.Interests
             FROM social_media_users u
             JOIN user_follows f1 ON f1.follower_id = :user_id AND f1.followed_id = u.UserID
             JOIN user_follows f2 ON f2.follower_id = u.UserID AND f2.followed_id = :user_id
         """)
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).fetchall()
-        return [{"user_id": row.UserID, "name": row.Name, "profile_image": row.profile_image} for row in result]
+        return [
+            {
+                "user_id": row.UserID,
+                "name": row.Name,
+                "profile_image": row.profile_image,
+                "interest": row.Interests.split(', ')[0].strip("'\"") if row.Interests else None  # Primer interés
+            }
+            for row in result
+        ]
+
 
     def get_messages_between_users(self, user_id_1, user_id_2):
         query = text("""

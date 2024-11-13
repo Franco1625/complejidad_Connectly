@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
 </head>
@@ -12,22 +13,25 @@
    <div class="lg:w-[300px] fixed lg:relative inset-y-0 z-40 bg-gray-900">
         {% include 'sidebar.html' %}
     </div>  
-    <!-- Main Content -->
     <div class="flex flex-col w-full lg:ml-[50px] p-4 lg:p-8 space-y-4 mt-16 lg:mt-4">
         <div class="flex flex-1 flex-col lg:flex-row space-x-0 lg:space-x-6 space-y-4 lg:space-y-0 ">
-            <!-- Lista de usuarios mutuos -->
-            <div class="lg:w-1/5 w-full bg-white p-4 rounded-lg shadow-lg">
+            <div class="lg:w-1/6 w-full bg-white p-4 rounded-lg shadow-lg">
                 <h3 class="text-lg font-semibold text-gray-700 mb-4 hidden lg:block">Contactos</h3>
-                <div class="flex lg:flex-col lg:space-y-2 lg:space-x-0 space-x-4 overflow-x-auto lg:overflow-visible">
-                    {% for user in mutual_followers %}
+                <div class="flex overflow-x-auto lg:overflow-hidden space-x-4">
+                    <div class="flex flex-row lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
+                        {% for user in mutual_followers %}
                         <a href="{{ url_for('chat', user_id=user['user_id']) }}"
-                           class="flex items-center p-3 rounded-lg hover:bg-gray-100 {% if user.user_id == selected_user_id %}bg-blue-50{% endif %} lg:flex-col">
-                            <img src="{{ user['profile_image'] }}" alt="{{ user['name'] }}" class="w-12 h-12 rounded-full">
-                            <span class="text-xs text-center mt-2 hidden lg:block">{{ user['name'] }}</span>
+                           class="flex items-center min-w-[4rem] rounded-lg hover:bg-gray-100 {% if user.user_id == selected_user_id %}bg-blue-50{% endif %}">
+                            <img src="{{ user['profile_image'] }}" alt="{{ user['name'] }}" class="w-14 h-14 rounded-full lg:ml-6 xl:ml-0 lg:m-2 lg:mr-6">
+                            <span class="text-sm lg:text-xl ml-4 hidden lg:hidden xl:inline">{{ user['name'] }}</span>
                         </a>
-                    {% endfor %}
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
+            
+
+
 
             <!-- Área de mensajes -->
             <div class="flex flex-col flex-1 bg-white rounded-lg shadow-lg relative">
@@ -36,8 +40,8 @@
                         {% set selected_user = mutual_followers | selectattr('user_id', 'equalto', selected_user_id) | first %}
                         <img src="{{ selected_user.profile_image }}" alt="{{ selected_user.name }}" class="w-14 h-14 rounded-full mr-4">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-800">{{ selected_user.name }}</h3>
-                            <p class="text-sm text-gray-500">{{ selected_user.interest }}</p>
+                            <h3 class="text-2xl font-semibold text-gray-800">{{ selected_user.name }}</h3>
+                            <p class="text-xl text-blue-500 font-bold">{{ selected_user.interest }}</p>
                         </div>
                     {% else %}
                         <h3 class="text-lg font-semibold text-gray-700">Selecciona un usuario para iniciar el chat</h3>
@@ -67,7 +71,7 @@
                     {% endif %}
                     {% if selected_user_id %}
                     <div class="flex flex-col sticky bottom-0 bg-white ">
-                        <!-- Preview de Imagen Mejorado -->
+                        <!-- Preview de Imagen -->
                         <div id="image-preview-container" class="relative hidden w-full max-w-xs mx-auto bg-gray-100 rounded-lg p-2 shadow-lg hover:shadow-2xl transition duration-300 ease-in-out">
                             <img id="image-preview" class="w-full h-full rounded-lg object-cover border-4 border-white">
                             <button onclick="removeImage()" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition duration-200 ease-in-out focus:outline-none">
@@ -80,17 +84,23 @@
 
                 <!-- Campo para enviar mensaje -->
                 {% if selected_user_id %}
-
-                        <!-- Input de Mensaje y Botones -->
-                        <div class="flex items-center">
-                            <input type="text" id="message-input" class="flex-grow border border-gray-300 rounded-full px-4 py-2 mr-3 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Escribe un mensaje...">
-                            <label for="image-input" class="cursor-pointer mr-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-600 hover:text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <!-- Input de Mensaje y Botones -->
+                        <div class="flex items-center space-x-2 p-2 bg-white border-t border-gray-200 lg:space-x-3">
+                            <input type="text" id="message-input" 
+                                       class="flex-grow border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm lg:text-base" 
+                                       placeholder="Escribe un mensaje...">
+                                <label for="image-input" class="cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" 
+                                         class="w-5 h-5 lg:w-6 lg:h-6 text-gray-600 hover:text-gray-800 transition duration-200" 
+                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"/>
                                 </svg>
                             </label>
-                            <input type="file" id="image-input" class="hidden" accept="image/*" onchange="previewImage(event)">
-                            <button onclick="sendMessage()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-full">Enviar</button>
+                                <input type="file" id="image-input" class="hidden" accept="image/*" onchange="previewImage(event)">
+                                <button onclick="sendMessage()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-3 py-1 lg:px-4 lg:py-2 rounded-full text-sm lg:text-base transition duration-200">
+                                Enviar
+                            </button>
                         </div>
                     </div>
                 {% endif %}
@@ -99,10 +109,11 @@
     </div>
 </div>
 
-<!-- Modal de imagen -->
-<div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden" onclick="closeImageModal()">
-    <img id="modal-image" class="max-w-full max-h-full lg:max-w-3xl lg:max-h-[90vh] ">
+<div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-40" onclick="closeImageModal()">
+    <img id="modal-image" class="w-10/12 h-auto max-w-[90%] max-h-[80%] sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[55%] 2xl:w-[60%] rounded-lg">
 </div>
+
+
 
 
 <script>
@@ -112,6 +123,7 @@
     const imageInput = document.getElementById('image-input');
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const imagePreview = document.getElementById('image-preview');
+    
 
     function previewImage(event) {
         const file = event.target.files[0];
@@ -168,7 +180,7 @@
         .then(data => {
             if (data.success) {
                 messageInput.value = '';
-                removeImage(); // Ocultar la vista previa después de enviar
+                removeImage();
             } else {
                 console.error('Error al enviar el mensaje:', data.error);
             }
@@ -178,7 +190,7 @@
 
     function formatTimestamp(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString(); // Formato solo de hora
+        return date.toLocaleTimeString();
     }
 
     function appendMessage(content, isSender, timestamp, image = null, profileImage = null) {
