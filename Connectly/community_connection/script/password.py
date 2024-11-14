@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import random
 
-db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
+db_url = 'mysql+mysqlconnector://root:password@localhost:3306/connectly'
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
 

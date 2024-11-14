@@ -15,7 +15,7 @@ CORS(app, supports_credentials=True)
 socketio = SocketIO(app)
 
 # Conexión a la base de datos y creación de instancias de CommunityData
-db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
+db_url = 'mysql+mysqlconnector://root:password@localhost:3306/connectly'
 community_data_instance = CommunityData(db_url)
 engine = create_engine(db_url)
 SessionLocal = sessionmaker(bind=engine)
@@ -513,4 +513,4 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
