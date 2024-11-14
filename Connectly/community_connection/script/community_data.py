@@ -255,6 +255,7 @@ class CommunityData:
                 }
                 for row in result
             ]
+## Obtener los seguidos de un usuario
     def get_mutual_followers(self, user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image, u.Interests
@@ -274,7 +275,7 @@ class CommunityData:
             for row in result
         ]
 
-
+## Obtener los posts de un usuario
     def get_messages_between_users(self, user_id_1, user_id_2):
         query = text("""
             SELECT m.sender_id, m.receiver_id, m.content, m.image, m.sent_at, u.profile_image
@@ -298,8 +299,7 @@ class CommunityData:
             for row in result
         ]
 
-    
-        
+## Enviar un mensaje     
     def get_following(self, user_id, current_user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image
@@ -319,7 +319,7 @@ class CommunityData:
                 for row in result
             ]
                
-        
+## Enviar un mensaje     
     def add_comment(self, post_id, user_id, content):
         query = text("""
             INSERT INTO comments (PostID, UserID, Content, CommentDate)
