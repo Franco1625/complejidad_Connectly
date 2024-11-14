@@ -13,3 +13,5 @@ columns_to_store = ['UserID', 'Name', 'Gender', 'DOB', 'Interests', 'City', 'Cou
 df[columns_to_store].to_sql('social_media_users', con=engine, if_exists='replace', index=False)
 
 print("El dataset ha sido insertado correctamente en la base de datos MySQL.")
+
+## Sonic es god tier
