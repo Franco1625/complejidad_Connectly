@@ -93,12 +93,12 @@ class CommunityData:
             "country_counts": country_counts
         }
     
-
+## Obtener los países únicos
     def get_unique_countries(self):
         countries = {user_data["country"] for user_data in self.user_groups.values() if user_data.get("country")}
         return sorted(countries)
 
-
+## Obtener los géneros únicos
     def get_users_by_gender_and_interest(self, gender, current_interest, current_user_id):
         filtered_users = [
             {
@@ -114,7 +114,7 @@ class CommunityData:
         ]
         return filtered_users
     
-
+## Obtener los usuarios por país
     def get_users_by_country(self, country, current_user_id):
         filtered_users = [
             {
@@ -129,8 +129,7 @@ class CommunityData:
         ]
         return filtered_users
 
-
-
+## Obtener el perfil de un usuario
     def get_user_profile(self, user_id):
         if user_id in self.user_groups:
             user_data = self.user_groups[user_id]
@@ -139,7 +138,7 @@ class CommunityData:
 
         return None, []
 
-
+## Obtener los usuarios similares
     def follow_user(self, follower_id, followed_id):
         if follower_id == followed_id:
             return False
@@ -154,7 +153,7 @@ class CommunityData:
             session.commit()
         
         return True
-
+## Verificar si un usuario sigue a otro
     def is_following(self, follower_id, followed_id):
         query = text("""
             SELECT 1 FROM user_follows
@@ -163,7 +162,7 @@ class CommunityData:
         with self.engine.connect() as connection:
             result = connection.execute(query, {"follower_id": follower_id, "followed_id": followed_id}).fetchone()
         return result is not None
-    
+## Obtener las recomendaciones de usuarios para un usuario    
     def get_user_recommendations(self, user_id):
         query_recommendations = text("""
             SELECT DISTINCT uf2.follower_id AS recommended_user
@@ -203,7 +202,7 @@ class CommunityData:
                     })
 
         return recommendations
-    
+## Dejar de seguir a un usuario    
     def unfollow_user(self, follower_id, followed_id):
         if follower_id == followed_id:
             return False
@@ -219,26 +218,25 @@ class CommunityData:
         
         return True
     
-
-
+## Obtener los posts de un usuario
     def get_post_count(self, user_id):
         query = text("SELECT COUNT(*) FROM posts WHERE UserID = :user_id")
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
-
+## Obtener los seguidores de un usuario
     def get_follower_count(self, user_id):
         query = text("SELECT COUNT(*) FROM user_follows WHERE followed_id = :user_id")
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
-
+## Obtener los seguidos de un usuario
     def get_following_count(self, user_id):
         query = text("SELECT COUNT(*) FROM user_follows WHERE follower_id = :user_id")
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
-    
+## Obtener los posts de un usuario    
     def get_followers(self, user_id, current_user_id):
         query = text("""
             SELECT u.UserID, u.Name, u.profile_image
