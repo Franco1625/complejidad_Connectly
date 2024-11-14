@@ -1,3 +1,4 @@
+## Este archivo contiene la lógica de la aplicación web Connectly, que es una red social simple que permite a los usuarios registrarse, seguirse entre sí, publicar publicaciones, comentar y chatear en tiempo real. La aplicación utiliza Flask para el backend y la base de datos MySQL para almacenar los datos de los usuarios, publicaciones y mensajes. También utiliza Flask-SocketIO para la funcionalidad de chat en tiempo real.
 import os, uuid
 from flask import Flask, g, render_template, redirect, url_for, request, session, send_from_directory, jsonify
 from flask_cors import CORS
@@ -7,6 +8,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from datetime import datetime
 from community_connection.script.community_data import CommunityData
 
+## Crear la aplicación Flask
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 CORS(app, supports_credentials=True)
@@ -24,6 +26,7 @@ SessionLocal = sessionmaker(bind=engine)
 STORAGE_FOLDER = os.path.join(os.path.dirname(__file__), 'storage')
 os.makedirs(STORAGE_FOLDER, exist_ok=True)
 
+## Rutas de la aplicación
 @app.route('/')
 def home():
     return redirect(url_for('login'))
@@ -56,6 +59,7 @@ def login():
     
     return render_template('login.html')
 
+## Ruta para el registro de nuevos usuarios
 @app.route('/profile/<int:user_id>')
 def profile(user_id):
     current_user_id = session.get('user_id')
@@ -117,7 +121,7 @@ def profile(user_id):
         chat_user_id=user_id
     )
 
-
+## Ruta para el registro de nuevos usuarios
 @app.route('/filter_users', methods=['GET'])
 def filter_users():
     gender = request.args.get('gender')
