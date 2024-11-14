@@ -100,11 +100,16 @@
        </h2>
    
        <template x-if="!hasPosts">
-           <div class="text-center">
-               <p class="text-gray-600 mb-4">No tienes publicaciones recientes.</p>
-               <p class="text-blue-500 cursor-pointer hover:underline" onclick="window.location.href='/create_post'">¡Crea tu primera publicación!</p>
-           </div>
-       </template>
+        <div class="text-center">
+            {% if is_own_profile %}
+                <p class="text-gray-600 mb-4">No tienes publicaciones recientes.</p>
+                <p class="text-blue-500 cursor-pointer hover:underline" onclick="window.location.href='/create_post'">¡Crea tu primera publicación!</p>
+            {% else %}
+                <p class="text-gray-600 mb-4">{{ user['name'] }} no tiene publicaciones recientes.</p>
+            {% endif %}
+        </div>
+    </template>
+    
    
        <div class="relative overflow-hidden group p-6" x-show="hasPosts">
            <button @click="currentSlide = currentSlide > 0 ? currentSlide - 1 : totalSlides - 1" 
@@ -232,15 +237,50 @@
     </div>
 </div> {% endif %}
 
+<div class="flex flex-col md:flex-row gap-6 items-center mb-10">
+    <div class="w-full md:w-auto">
+        <label for="genderFilter" class="block text-sm font-semibold text-gray-600 mb-2">Género</label>
+        <div class="relative group">
+            <select 
+                id="genderFilter" 
+                name="gender" 
+                class="w-full md:w-52 border border-gray-300 rounded-full shadow-lg p-3 text-gray-700 appearance-none transition group-hover:ring-2 group-hover:ring-indigo-400 group-hover:shadow-xl"
+                onchange="handleSelection(this)"
+                onfocus="toggleArrow(this, true)"
+                onblur="resetArrow(this)">
+                <option value="">Todos</option>
+                <!-- Opciones -->
+            </select>
+            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" id="genderArrow" class="h-5 w-5 text-gray-400 transition-transform transform" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </div>
+        </div>
+    </div>
 
-<div class="mb-8">
-    <label for="genderFilter" class="block text-gray-700">Filtrar por género ({{ user['interest'] }}):</label>
-    <select id="genderFilter" name="gender" class="border p-2 rounded" onchange="applyGenderAndInterestFilter()">
-        <option value="">Todos</option>
-        <option value="Male">Masculino</option>
-        <option value="Female">Femenino</option>
-    </select>
+    <div class="w-full md:w-auto">
+        <label for="countryFilter" class="block text-sm font-semibold text-gray-600 mb-2">País</label>
+        <div class="relative group">
+            <select 
+                id="countryFilter" 
+                name="country" 
+                class="w-full md:w-52 border border-gray-300 rounded-full shadow-lg p-3 text-gray-700 appearance-none transition group-hover:ring-2 group-hover:ring-indigo-400 group-hover:shadow-xl"
+                onchange="handleSelection(this)"
+                onfocus="toggleArrow(this, true)"
+                onblur="resetArrow(this)">
+                <option value="">Todos</option>
+                <!-- Opciones -->
+            </select>
+            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" id="countryArrow" class="h-5 w-5 text-gray-400 transition-transform transform" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 9.293a1 1 0 011.414 0L10 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a 1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </div>
+        </div>
+    </div>
 </div>
+
 
 
 <div>
@@ -271,48 +311,108 @@
 
 
 
-    <script>
-   function applyGenderAndInterestFilter() {
-    const gender = document.getElementById('genderFilter').value;
-    const profileUserId = {{ user['user_id'] }}; // El ID del perfil visitado
+<script>
+    function toggleArrow(selectElement, isFocused) {
+        const arrowId = selectElement.id === 'genderFilter' ? 'genderArrow' : 'countryArrow';
+        const arrow = document.getElementById(arrowId);
+        if (arrow) {
+            arrow.classList.toggle('rotate-180', isFocused);
+        }
+    }
 
-    fetch(`/filter_users?gender=${gender}&profile_user_id=${profileUserId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            const container = document.getElementById('filteredUsersContainer');
-            container.innerHTML = ''; // Limpia el contenedor
+    function resetArrow(selectElement) {
+        const arrowId = selectElement.id === 'genderFilter' ? 'genderArrow' : 'countryArrow';
+        const arrow = document.getElementById(arrowId);
+        if (arrow) {
+            arrow.classList.remove('rotate-180');
+        }
+    }
 
-            if (data.filtered_users && data.filtered_users.length > 0) {
-                // Renderiza los usuarios filtrados
-                data.filtered_users.forEach((user) => {
-                    const userCard = `
-                    <div class="bg-white p-6 rounded-lg shadow-lg text-center transition hover:scale-105">
-                        <a href="/profile/${user.user_id}">
-                            <img src="${user.profile_image}" alt="Foto de perfil de ${user.name}" class="w-16 h-16 mx-auto rounded-full border-2 border-blue-500 mb-3">
-                        </a>
-                        <p class="text-gray-800 font-bold">${user.name}</p>
-                        ${
-                            user.is_following
-                                ? `<button id="followBtn-${user.user_id}" onclick="toggleUnfollow(${user.user_id}, this)" class="mt-2 text-red-500 hover:text-red-700 text-sm">Dejar de seguir</button>`
-                                : `<button id="followBtn-${user.user_id}" onclick="toggleFollow(${user.user_id}, this)" class="mt-2 text-blue-500 hover:text-blue-700 text-sm">Seguir</button>`
-                        }
-                    </div>`;
-                    container.insertAdjacentHTML('beforeend', userCard);
+    function handleSelection(selectElement) {
+        resetArrow(selectElement);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const profileUserId = {{ user['user_id'] }};
+
+        fetch(`/get_filter_counts_for_profile/${profileUserId}`)
+            .then((response) => response.json())
+            .then((data) => {
+                const genderSelect = document.getElementById('genderFilter');
+                const countrySelect = document.getElementById('countryFilter');
+
+                genderSelect.innerHTML = '<option value="">Todos</option>';
+                countrySelect.innerHTML = '<option value="">Todos</option>';
+
+                Object.entries(data.gender_counts).forEach(([gender, count]) => {
+                    const option = document.createElement('option');
+                    option.value = gender;
+                    option.textContent = `${gender} (${count})`;
+                    genderSelect.appendChild(option);
                 });
-            } else {
-                // Mostrar mensaje si no hay resultados
-                container.innerHTML = '<p class="text-gray-500">No se encontraron usuarios con ese filtro.</p>';
-            }
+
+                Object.entries(data.country_counts).forEach(([country, count]) => {
+                    const option = document.createElement('option');
+                    option.value = country;
+                    option.textContent = `${country} (${count})`;
+                    countrySelect.appendChild(option);
+                });
+            })
+            .catch((error) => {
+                console.error('Error al cargar los contadores:', error);
+            });
+    });
+
+    function applyFilters() {
+        const gender = document.getElementById('genderFilter').value;
+        const country = document.getElementById('countryFilter').value;
+        const profileUserId = {{ user['user_id'] }};
+
+        // Construir la URL con los parámetros seleccionados
+        const url = new URL('/filter_users', window.location.origin);
+        url.searchParams.append('profile_user_id', profileUserId);
+        if (gender) url.searchParams.append('gender', gender);
+        if (country) url.searchParams.append('country', country);
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
         })
-        .catch((error) => {
-            console.error('Error al aplicar el filtro:', error);
-        });
-}
+            .then((response) => response.json())
+            .then((data) => {
+                const container = document.getElementById('filteredUsersContainer');
+                container.innerHTML = '';
+
+                if (data.filtered_users && data.filtered_users.length > 0) {
+                    data.filtered_users.forEach((user) => {
+                        const userCard = `
+                        <div class="bg-white p-6 rounded-lg shadow-lg text-center transition hover:scale-105">
+                            <a href="/profile/${user.user_id}">
+                                <img src="${user.profile_image}" alt="Foto de perfil de ${user.name}" class="w-16 h-16 mx-auto rounded-full border-2 border-blue-500 mb-3">
+                            </a>
+                            <p class="text-gray-800 font-bold">${user.name}</p>
+                            ${
+                                user.is_following
+                                    ? `<button id="followBtn-${user.user_id}" onclick="toggleUnfollow(${user.user_id}, this)" class="mt-2 text-red-500 hover:text-red-700 text-sm">Dejar de seguir</button>`
+                                    : `<button id="followBtn-${user.user_id}" onclick="toggleFollow(${user.user_id}, this)" class="mt-2 text-blue-500 hover:text-blue-700 text-sm">Seguir</button>`
+                            }
+                        </div>`;
+                        container.insertAdjacentHTML('beforeend', userCard);
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-gray-500">No se encontraron usuarios.</p>';
+                }
+            })
+            .catch((error) => {
+                console.error('Error al aplicar los filtros:', error);
+            });
+    }
+
+    document.getElementById('genderFilter').addEventListener('change', applyFilters);
+    document.getElementById('countryFilter').addEventListener('change', applyFilters);
+
 
      function toggleRecommendationFollow(userId, buttonText = 'Seguir') {
         fetch(`/follow/${userId}`, {

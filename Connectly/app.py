@@ -11,14 +11,16 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 CORS(app, supports_credentials=True)
 
-# Configuración de Flask-SocketIO
+# configuración de Flask-SocketIO para el manejo de mensajes en tiempo real entre seguidores
 socketio = SocketIO(app)
 
+# Conexión a la base de datos y creación de instancias de CommunityData
 db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
 community_data_instance = CommunityData(db_url)
 engine = create_engine(db_url)
 SessionLocal = sessionmaker(bind=engine)
 
+# Crear la carpeta de almacenamiento para las imágenes de chat y posts
 STORAGE_FOLDER = os.path.join(os.path.dirname(__file__), 'storage')
 os.makedirs(STORAGE_FOLDER, exist_ok=True)
 
@@ -59,23 +61,23 @@ def profile(user_id):
     current_user_id = session.get('user_id')
     is_own_profile = (current_user_id == user_id)
 
-    # Obtener datos del perfil visitado
+    # Obtener datos del perfil
     user_data, same_interest_users = community_data_instance.get_user_profile(user_id)
     post_count = community_data_instance.get_post_count(user_id)
     follower_count = community_data_instance.get_follower_count(user_id)
     following_count = community_data_instance.get_following_count(user_id)
 
-    # Obtener el interés principal del usuario actual
+    # obtener el interés principal del usuario actual
     user_interest = user_data['interest'] if user_data else None
 
-    # Filtro de género con interés
+    # Filtro de genero con interes
     gender_filter = request.args.get('gender')
     if gender_filter and user_interest:
         same_interest_users = community_data_instance.get_users_by_gender_and_interest(
             gender_filter, user_interest, current_user_id
         )
 
-    # Recomendaciones de usuarios (solo para el perfil propio)
+    # recomendaciones de usuarios (solo para el perfil propio)
     recommended_users = community_data_instance.get_user_recommendations(user_id) if is_own_profile else []
 
     # Verificar si el usuario autenticado sigue al perfil visitado
@@ -85,13 +87,11 @@ def profile(user_id):
     followers = community_data_instance.get_followers(user_id, current_user_id)
     following = community_data_instance.get_following(user_id, current_user_id)
 
-    # Verificar si el usuario autenticado sigue a usuarios con intereses similares
     for similar_user in same_interest_users:
         similar_user['is_following'] = community_data_instance.is_following(
             current_user_id, similar_user['user_id']
         ) if current_user_id else False
 
-    # Obtener publicaciones del usuario visitado
     query = text("""
         SELECT PostID, Content, PostDate, Image
         FROM posts
@@ -101,7 +101,6 @@ def profile(user_id):
     with engine.connect() as connection:
         user_posts = connection.execute(query, {"user_id": user_id}).fetchall()
 
-    # Pasar chat_user_id como el ID del perfil actual que estás visitando
     return render_template(
         'profile.html',
         user=user_data,
@@ -115,38 +114,45 @@ def profile(user_id):
         is_following=is_following,
         followers=followers,
         following=following,
-        chat_user_id=user_id  # Pasar el `user_id` actual como `chat_user_id`
+        chat_user_id=user_id
     )
 
 
 @app.route('/filter_users', methods=['GET'])
 def filter_users():
     gender = request.args.get('gender')
+    country = request.args.get('country')
     profile_user_id = request.args.get('profile_user_id', type=int)
     current_user_id = session.get('user_id')
 
-    # Obtener el interés del perfil visitado
     user_data, _ = community_data_instance.get_user_profile(profile_user_id)
     user_interest = user_data['interest'] if user_data else None
 
-    if user_interest:
-        if gender:  # Filtrar por género
-            filtered_users = community_data_instance.get_users_by_gender_and_interest(
-                gender, user_interest, profile_user_id
-            )
-        else:  # No filtrar por género, devolver todos los usuarios con el mismo interés
-            filtered_users = [
-                user for user in community_data_instance.user_groups.values()
-                if user["interest"] == user_interest and user["user_id"] != profile_user_id
-            ]
-        # Agregar datos de seguimiento dinámicamente
-        for user in filtered_users:
-            user["is_following"] = community_data_instance.is_following(current_user_id, user["user_id"])
-    else:
-        filtered_users = []
+    filtered_users = [
+        user for user in community_data_instance.user_groups.values()
+        if (not gender or user["gender"] == gender)
+        and (not country or user.get("country") == country)
+        and (not user_interest or user["interest"] == user_interest) 
+        and user["user_id"] != profile_user_id 
+    ]
+
+    for user in filtered_users:
+        user["is_following"] = community_data_instance.is_following(current_user_id, user["user_id"])
 
     return jsonify({"filtered_users": filtered_users})
 
+@app.route('/get_filter_counts_for_profile/<int:profile_user_id>', methods=['GET'])
+def get_filter_counts_for_profile(profile_user_id):
+    filter_counts = community_data_instance.get_filter_counts_for_profile(profile_user_id)
+    return jsonify(filter_counts)
+
+
+
+@app.route('/get_countries', methods=['GET'])
+def get_countries():
+    countries = community_data_instance.get_unique_countries()
+    return jsonify({"countries": countries})
+ 
 @app.route('/create_post', methods=['GET', 'POST'])
 def create_post():
     if 'user_id' not in session:
@@ -235,7 +241,6 @@ def followers(user_id):
     followers_list = community_data_instance.get_followers(user_id, current_user_id)
     user_data, _ = community_data_instance.get_user_profile(user_id)
 
-    # Asegura que cada seguidor tenga el estado 'follows_authenticated_user' y 'is_following'
     processed_followers = []
     for follower in followers_list:
         follower_data = {
@@ -272,7 +277,6 @@ def follow(user_id):
 
     follower_id = session['user_id']
 
-    # Evitar que el usuario se siga a sí mismo
     if follower_id == user_id:
         return jsonify(success=False, error="No puedes seguirte a ti mismo.")
 
@@ -281,8 +285,8 @@ def follow(user_id):
     if success:
         return jsonify(
             success=True,
-            is_profile_visited=(follower_id != user_id),  # True si el usuario está viendo otro perfil
-            is_logged_in_user=(follower_id == session['user_id'])  # True si el usuario es el autenticado
+            is_profile_visited=(follower_id != user_id),
+            is_logged_in_user=(follower_id == session['user_id'])
         )
     else:
         return jsonify(success=False, error="No se pudo seguir al usuario.")
@@ -294,7 +298,6 @@ def unfollow(user_id):
 
     follower_id = session['user_id']
 
-    # Evitar que el usuario se deje de seguir a sí mismo
     if follower_id == user_id:
         return jsonify(success=False, error="No puedes dejar de seguirte a ti mismo.")
 
@@ -360,13 +363,11 @@ def send_message():
     content = request.form.get('content')
     image_file = request.files.get('image')
 
-    # Obtener la imagen de perfil del remitente
     query = text("SELECT profile_image FROM social_media_users WHERE UserID = :sender_id")
     with engine.connect() as connection:
         result = connection.execute(query, {"sender_id": sender_id}).fetchone()
         profile_image = result.profile_image if result else None
 
-    # Guardar la imagen del mensaje en el almacenamiento
     image_path = None
     if image_file:
         filename = f"{sender_id}_{int(datetime.timestamp(datetime.now()))}_{uuid.uuid4().hex}.png"
@@ -374,7 +375,6 @@ def send_message():
         image_file.save(image_path)
         image_path = f"/storage/{filename}"
 
-    # Guardar el mensaje en la base de datos
     query = text("""
         INSERT INTO messages (sender_id, receiver_id, content, image, sent_at)
         VALUES (:sender_id, :receiver_id, :content, :image, NOW())
@@ -394,7 +394,7 @@ def send_message():
         'receiver_id': receiver_id,
         'content': content,
         'image': image_path,
-        'profile_image': profile_image,  # Incluye la imagen de perfil aquí
+        'profile_image': profile_image,
         'sent_at': datetime.now().isoformat()
     }, room=f'chat_{min(sender_id, int(receiver_id))}_{max(sender_id, int(receiver_id))}')
 
@@ -418,7 +418,6 @@ def get_messages(user_id):
 
     current_user_id = session['user_id']
 
-    # Verificar que ambos usuarios se sigan mutuamente
     if not (community_data_instance.is_following(current_user_id, user_id) and community_data_instance.is_following(user_id, current_user_id)):
         return jsonify({"error": "You need to follow each other to chat"}), 403
 
@@ -442,19 +441,17 @@ def get_messages(user_id):
 def load_logged_in_user():
     user_id = session.get('user_id')
     if user_id:
-        # Consulta para obtener los datos del usuario autenticado
         query = text("SELECT UserID, username, profile_image FROM social_media_users WHERE UserID = :user_id")
         with engine.connect() as connection:
             user = connection.execute(query, {"user_id": user_id}).fetchone()
             if user:
-                # Almacena los datos de usuario en `g.user` para usarlos en todas las plantillas
                 g.user = {
                     "user_id": user.UserID,
                     "username": user.username,
                     "profile_image": user.profile_image
                 }
     else:
-        g.user = None  # Usuario no autenticado
+        g.user = None
 
 @app.route('/chat')
 def chat():
@@ -462,14 +459,11 @@ def chat():
         return redirect(url_for('login'))
 
     current_user_id = session['user_id']
-    # Obtener usuarios con los que el usuario autenticado tiene una relación de seguimiento mutuo
     mutual_followers = community_data_instance.get_mutual_followers(current_user_id)
 
-    # Obtén el ID del usuario seleccionado en la lista de chat (opcional)
     selected_user_id = request.args.get('user_id', type=int)
     messages = []
 
-    # Si hay un usuario seleccionado, carga los mensajes
     if selected_user_id:
         messages = community_data_instance.get_messages_between_users(current_user_id, selected_user_id)
 
@@ -498,8 +492,8 @@ def index():
             "Image": post[3],
             "Name": post[4],
             "profile_image": post[5],
-            "UserID": post[6],  # Incluye el UserID aquí
-            "interest": post[7].split(', ')[0].strip(" '\""),  # Solo el primer interés
+            "UserID": post[6],
+            "interest": post[7].split(', ')[0].strip(" '\""),
             "like_count": community_data_instance.get_like_count(post[0]),
             "is_post_liked": community_data_instance.is_post_liked(post[0], user_id) if user_id else False
         }

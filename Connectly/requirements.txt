@@ -1,0 +1,10 @@
+pandas
+sqlalchemy
+mysql-connector-python
+networkx
+flask
+flask-cors
+flask-socketio
+python-engineio==4.3.0
+python-socketio==5.7.2
+uuid

@@ -10,52 +10,93 @@ class CommunityData:
         self.user_groups = self._load_user_groups(limit=1500)
 
     def _load_user_groups(self, limit=1500):
-             df = pd.read_sql(
-                 f'SELECT UserID, Name, Interests, Gender, profile_image FROM social_media_users LIMIT {limit}',
-                 con=self.engine
-             )
+        df = pd.read_sql(
+            f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
+            con=self.engine
+        )
 
-             G = nx.Graph()
-             interest_groups = {}
+        G = nx.Graph()
+        interest_groups = {}
 
-             for _, user in df.iterrows():
-                 primary_interest = user['Interests'].split(', ')[0]
-                 user_id = user['UserID']
+        for _, user in df.iterrows():
+            primary_interest = user['Interests'].split(', ')[0].strip("'\"")
+            user_id = user['UserID']
 
-                 G.add_node(user_id,
-                            name=user['Name'],
-                            interest=primary_interest,
-                            gender=user['Gender'],  # Agregar género al nodo
-                            profile_image=user['profile_image'])
+            G.add_node(user_id,
+                       name=user['Name'],
+                       interest=primary_interest,
+                       gender=user['Gender'],
+                       country=user['Country'],
+                       profile_image=user['profile_image'])
 
-                 if primary_interest not in interest_groups:
-                     interest_groups[primary_interest] = []
-                 interest_groups[primary_interest].append(user_id)
+            if primary_interest not in interest_groups:
+                interest_groups[primary_interest] = []
+            interest_groups[primary_interest].append(user_id)
 
-             user_groups = {
-                 user_id: {
-                     "user_id": user_id,
-                     "name": G.nodes[user_id]['name'],
-                     "interest": G.nodes[user_id]['interest'],
-                     "gender": G.nodes[user_id]['gender'],  # Incluir género aquí
-                     "profile_image": G.nodes[user_id]['profile_image'],
-                     "similar_users": [
-                         {
-                             "user_id": similar_user,
-                             "name": G.nodes[similar_user]['name'],
-                             "profile_image": G.nodes[similar_user]['profile_image']
-                         }
-                         for similar_user in interest_groups[G.nodes[user_id]['interest']]
-                         if similar_user != user_id
-                     ]
-                 }
-                 for user_id in G.nodes
-             }
+        user_groups = {
+            user_id: {
+                "user_id": user_id,
+                "name": G.nodes[user_id]['name'],
+                "interest": G.nodes[user_id]['interest'],
+                "gender": G.nodes[user_id]['gender'], 
+                "country": G.nodes[user_id]['country'],
+                "profile_image": G.nodes[user_id]['profile_image'],
+                "similar_users": [
+                    {
+                        "user_id": similar_user,
+                        "name": G.nodes[similar_user]['name'],
+                        "profile_image": G.nodes[similar_user]['profile_image']
+                    }
+                    for similar_user in interest_groups[G.nodes[user_id]['interest']]
+                    if similar_user != user_id
+                ]
+            }
+            for user_id in G.nodes
+        }
 
-             self.interest_groups = interest_groups
-             return user_groups
+        self.interest_groups = interest_groups
+        return user_groups
 
+
+    def get_filter_counts_for_profile(self, profile_user_id):
+        profile_data = self.user_groups.get(profile_user_id)
     
+        if not profile_data:
+            return {
+                "gender_counts": {},
+                "country_counts": {}
+            }
+    
+        user_interest = profile_data["interest"]
+    
+        related_users = [
+            user for user in self.user_groups.values()
+            if user["interest"] == user_interest and user["user_id"] != profile_user_id
+        ]
+    
+        gender_counts = {}
+        country_counts = {}
+    
+        for user in related_users:
+            gender = user.get("gender")
+            if gender:
+                gender_counts[gender] = gender_counts.get(gender, 0) + 1
+    
+            country = user.get("country")
+            if country:
+                country_counts[country] = country_counts.get(country, 0) + 1
+    
+        return {
+            "gender_counts": gender_counts,
+            "country_counts": country_counts
+        }
+    
+
+    def get_unique_countries(self):
+        countries = {user_data["country"] for user_data in self.user_groups.values() if user_data.get("country")}
+        return sorted(countries)
+
+
     def get_users_by_gender_and_interest(self, gender, current_interest, current_user_id):
         filtered_users = [
             {
@@ -67,10 +108,25 @@ class CommunityData:
             for user_id, user_data in self.user_groups.items()
             if user_data["gender"] == gender
             and user_data["interest"] == current_interest
-            and user_id != current_user_id  # Excluir al usuario actual
+            and user_id != current_user_id
         ]
         return filtered_users
-        
+    
+
+    def get_users_by_country(self, country, current_user_id):
+        filtered_users = [
+            {
+                "user_id": user_data["user_id"],
+                "name": user_data["name"],
+                "interest": user_data["interest"],
+                "profile_image": user_data["profile_image"],
+            }
+            for user_id, user_data in self.user_groups.items()
+            if user_data.get("country") == country
+            and user_id != current_user_id 
+        ]
+        return filtered_users
+
 
 
     def get_user_profile(self, user_id):
@@ -235,9 +291,9 @@ class CommunityData:
                 "sender_id": row.sender_id,
                 "receiver_id": row.receiver_id,
                 "content": row.content,
-                "image": row.image,  # Imagen adjunta en el mensaje (si existe)
+                "image": row.image,
                 "sent_at": row.sent_at,
-                "profile_image": row.profile_image  # Imagen de perfil del remitente
+                "profile_image": row.profile_image
             }
             for row in result
         ]
@@ -286,7 +342,7 @@ class CommunityData:
             return [
                 {
                     "CommentID": row.CommentID,
-                    "UserID": row.UserID,  # Asegúrate de incluir el UserID aquí
+                    "UserID": row.UserID, 
                     "Content": row.Content,
                     "CommentDate": row.CommentDate,
                     "Name": row.Name,
