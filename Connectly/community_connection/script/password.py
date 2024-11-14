@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 import random
 
 ## Conexión a la base de datos
-db_url = 'mysql+mysqlconnector://root:password@localhost:3306/connectly'
+db_url = 'mysql+mysqlconnector://root:root@localhost:3306/prueba2'
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
 
