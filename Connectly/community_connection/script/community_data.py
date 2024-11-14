@@ -1,14 +1,16 @@
+## Description: This script contains the class CommunityData that is used to interact with the database and retrieve data for the community connection feature.
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import networkx as nx
 
+## Clase CommunityData
 class CommunityData:
     def __init__(self, db_url):
         self.engine = create_engine(db_url)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.user_groups = self._load_user_groups(limit=1500)
-
+## Cargar los grupos de usuarios
     def _load_user_groups(self, limit=1500):
         df = pd.read_sql(
             f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
@@ -57,7 +59,7 @@ class CommunityData:
         self.interest_groups = interest_groups
         return user_groups
 
-
+## Obtener los conteos de filtros para un perfil de usuario
     def get_filter_counts_for_profile(self, profile_user_id):
         profile_data = self.user_groups.get(profile_user_id)
     
