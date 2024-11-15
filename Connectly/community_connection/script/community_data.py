@@ -1,13 +1,9 @@
-## Description: This script contains the class CommunityData that is used to interact with the database and retrieve data for the community connection feature.
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import networkx as nx
 import matplotlib.pyplot as plt
 import os
-
-
-
 
 ## Clase CommunityData
 class CommunityData:
@@ -134,6 +130,31 @@ class CommunityData:
          return user_groups
 
 
+    def get_second_interest(self, user_id):
+        """
+        Obtiene el segundo interés de un usuario basado en su UserID utilizando el query proporcionado.
+        """
+        query = text("""
+            SELECT 
+                UserID, 
+                Interests,
+                SUBSTRING_INDEX(SUBSTRING_INDEX(Interests, ',', 2), ',', -1) AS SecondInterest
+            FROM 
+                social_media_users
+            WHERE 
+                UserID = :user_id
+                AND LENGTH(Interests) - LENGTH(REPLACE(Interests, ',', '')) >= 1
+        """)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, {"user_id": user_id}).fetchone()
+            
+            if result and result.SecondInterest:
+                # Retornar el segundo interés limpio
+                return result.SecondInterest.strip()
+            return None  # Usuario no encontrado o sin un segundo interés
+
+
+
 ## Obtener los conteos de filtros para un perfil de usuario
     def get_filter_counts_for_profile(self, profile_user_id):
         profile_data = self.user_groups.get(profile_user_id)
@@ -237,8 +258,17 @@ class CommunityData:
         with self.engine.connect() as connection:
             result = connection.execute(query, {"follower_id": follower_id, "followed_id": followed_id}).fetchone()
         return result is not None
-## Obtener las recomendaciones de usuarios para un usuario    
+    
+## Obtener las recomendaciones de usuarios  
     def get_user_recommendations(self, user_id):
+        """
+        Obtiene recomendaciones de usuarios para un usuario dado,
+        considerando seguidores mutuos, segundo interés y BFS.
+        """
+        # Obtener segundo interés del usuario
+        second_interest = self.get_second_interest(user_id)
+    
+        # Usuarios recomendados por seguidores mutuos o amigos en común
         query_recommendations = text("""
             SELECT DISTINCT uf2.follower_id AS recommended_user
             FROM user_follows AS uf1
@@ -250,22 +280,25 @@ class CommunityData:
                 FROM user_follows 
                 WHERE follower_id = :user_id
               )
+              AND uf2.follower_id <= 1500
         """)
-
+    
         recommendations = []
-
+    
         with self.SessionLocal() as session:
+            # Obtener recomendaciones basadas en seguidores mutuos o amigos en común
             recommended_users_raw = session.execute(query_recommendations, {"user_id": user_id}).fetchall()
-
-            for rec_user in recommended_users_raw:
+    
+            for rec_user in recommended_users_raw[:15]:
                 recommended_user_id = rec_user[0]
                 user_data_query = text("""
-                    SELECT UserID, Name, profile_image
+                    SELECT UserID, Name, profile_image, Interests
                     FROM social_media_users
                     WHERE UserID = :user_id
+                      AND UserID <= 1500
                 """)
                 user_data = session.execute(user_data_query, {"user_id": recommended_user_id}).fetchone()
-
+    
                 if user_data:
                     is_following_back = self.is_following(recommended_user_id, user_id)
                     recommendations.append({
@@ -273,10 +306,96 @@ class CommunityData:
                         "name": user_data.Name,
                         "profile_image": user_data.profile_image,
                         "is_following": False,
-                        "is_following_back": is_following_back
+                        "is_following_back": is_following_back,
+                        "second_interest_match": False
                     })
+    
+        # Recomendaciones por segundo interés
+        if second_interest:
+            query_second_interest = text("""
+                SELECT UserID, Name, profile_image
+                FROM social_media_users
+                WHERE SUBSTRING_INDEX(SUBSTRING_INDEX(Interests, ',', 2), ',', -1) = :second_interest
+                  AND UserID != :user_id
+                  AND UserID NOT IN (
+                    SELECT followed_id
+                    FROM user_follows
+                    WHERE follower_id = :user_id
+                  )
+                  AND UserID <= 1500
+            """)
+    
+            with self.engine.connect() as connection:
+                second_interest_users = connection.execute(query_second_interest, {
+                    "second_interest": second_interest,
+                    "user_id": user_id
+                }).fetchall()
+    
+            for user in second_interest_users:
+                if not any(rec["user_id"] == user.UserID for rec in recommendations):
+                    recommendations.append({
+                        "user_id": user.UserID,
+                        "name": user.Name,
+                        "profile_image": user.profile_image,
+                        "is_following": self.is_following(user_id, user.UserID),
+                        "is_following_back": self.is_following(user.UserID, user_id),
+                        "second_interest_match": True
+                    })
+    
+        # Recomendaciones usando BFS
+        bfs_queue = [user_id]
+        visited = set()
+    
+        while bfs_queue and len(recommendations) < 15:
+            current_user = bfs_queue.pop(0)
+            if current_user in visited:
+                continue
+            visited.add(current_user)
+    
+            bfs_query = text("""
+                SELECT followed_id
+                FROM user_follows
+                WHERE follower_id = :current_user
+                  AND followed_id NOT IN (
+                    SELECT followed_id
+                    FROM user_follows
+                    WHERE follower_id = :user_id
+                  )
+            """)
+    
+            with self.engine.connect() as connection:
+                followers = connection.execute(bfs_query, {"current_user": current_user, "user_id": user_id}).fetchall()
+    
+            for follower in followers:
+                follower_id = follower[0]
+                if follower_id not in visited:
+                    bfs_queue.append(follower_id)
+    
+                if follower_id != user_id and follower_id not in [rec["user_id"] for rec in recommendations]:
+                    user_data_query = text("""
+                        SELECT UserID, Name, profile_image, Interests
+                        FROM social_media_users
+                        WHERE UserID = :user_id
+                          AND UserID <= 1500
+                    """)
+                    with self.engine.connect() as connection:
+                        user_data = connection.execute(user_data_query, {"user_id": follower_id}).fetchone()
+    
+                    if user_data:
+                        recommendations.append({
+                            "user_id": user_data.UserID,
+                            "name": user_data.Name,
+                            "profile_image": user_data.profile_image,
+                            "is_following": self.is_following(user_id, user_data.UserID),
+                            "is_following_back": self.is_following(user_data.UserID, user_id),
+                            "second_interest_match": False
+                        })
+    
+        return recommendations[:15]
 
-        return recommendations
+
+
+
 ## Dejar de seguir a un usuario    
     def unfollow_user(self, follower_id, followed_id):
         if follower_id == followed_id:

@@ -121,6 +121,20 @@ def profile(user_id):
         chat_user_id=user_id
     )
 
+@app.route('/get_second_interest/<int:user_id>', methods=['GET'])
+def get_second_interest_endpoint(user_id):
+    """
+    Endpoint para obtener el segundo interés de un usuario dado su ID.
+    """
+    # Usar la instancia de CommunityData para obtener el segundo interés
+    second_interest = community_data_instance.get_second_interest(user_id)
+    
+    if second_interest:
+        return jsonify({"success": True, "second_interest": second_interest})
+    
+    return jsonify({"success": False, "message": "No se encontró un segundo interés para este usuario."}), 404
+
+
 ## Ruta para el registro de nuevos usuarios
 @app.route('/filter_users', methods=['GET'])
 def filter_users():
