@@ -3,6 +3,11 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import networkx as nx
+import matplotlib.pyplot as plt
+import os
+
+
+
 
 ## Clase CommunityData
 class CommunityData:
@@ -10,54 +15,124 @@ class CommunityData:
         self.engine = create_engine(db_url)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.user_groups = self._load_user_groups(limit=1500)
+ 
+
 ## Cargar los grupos de usuarios
     def _load_user_groups(self, limit=1500):
-        df = pd.read_sql(
-            f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
-            con=self.engine
-        )
+         df = pd.read_sql(
+             f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
+             con=self.engine
+         )
 
-        G = nx.Graph()
-        interest_groups = {}
+         # Crear el grafo dirigido
+         G = nx.DiGraph()
+         interest_groups = {}
 
-        for _, user in df.iterrows():
-            primary_interest = user['Interests'].split(', ')[0].strip("'\"")
-            user_id = user['UserID']
+         # Agregar nodos al grafo y agrupar por intereses
+         for _, user in df.iterrows():
+             primary_interest = user['Interests'].split(', ')[0].strip("'\"")
+             user_id = user['UserID']
 
-            G.add_node(user_id,
-                       name=user['Name'],
-                       interest=primary_interest,
-                       gender=user['Gender'],
-                       country=user['Country'],
-                       profile_image=user['profile_image'])
+             G.add_node(user_id,
+                        name=user['Name'],
+                        interest=primary_interest,
+                        gender=user['Gender'],
+                        country=user['Country'],
+                        profile_image=user['profile_image'])
 
-            if primary_interest not in interest_groups:
-                interest_groups[primary_interest] = []
-            interest_groups[primary_interest].append(user_id)
+             if primary_interest not in interest_groups:
+                 interest_groups[primary_interest] = []
+             interest_groups[primary_interest].append(user_id)
 
-        user_groups = {
-            user_id: {
-                "user_id": user_id,
-                "name": G.nodes[user_id]['name'],
-                "interest": G.nodes[user_id]['interest'],
-                "gender": G.nodes[user_id]['gender'], 
-                "country": G.nodes[user_id]['country'],
-                "profile_image": G.nodes[user_id]['profile_image'],
-                "similar_users": [
-                    {
-                        "user_id": similar_user,
-                        "name": G.nodes[similar_user]['name'],
-                        "profile_image": G.nodes[similar_user]['profile_image']
-                    }
-                    for similar_user in interest_groups[G.nodes[user_id]['interest']]
-                    if similar_user != user_id
-                ]
-            }
-            for user_id in G.nodes
-        }
+         # Conectar usuarios con el mismo interés
+         for interest, users in interest_groups.items():
+             for i in range(len(users)):
+                 for j in range(i + 1, len(users)):
+                     # Agregar conexiones bidireccionales
+                     G.add_edge(users[i], users[j])
+                     G.add_edge(users[j], users[i])
 
-        self.interest_groups = interest_groups
-        return user_groups
+         # Implementación del algoritmo de Kosaraju
+
+         # Paso 1: DFS para obtener el orden de finalización
+         def kosaraju_dfs(graph, node, visited, stack):
+             visited[node] = True
+             for neighbor in graph.neighbors(node):
+                 if not visited[neighbor]:
+                     kosaraju_dfs(graph, neighbor, visited, stack)
+             stack.append(node)
+
+         # Paso 2: Transponer el grafo
+         def transpose_graph(graph):
+             transposed = nx.DiGraph()
+             for node in graph.nodes:
+                 transposed.add_node(node)
+             for u, v in graph.edges:
+                 transposed.add_edge(v, u)  # Invertir dirección de las aristas
+             return transposed
+
+         # Paso 3: DFS en el grafo transpuesto
+         def kosaraju_dfs_transposed(graph, node, visited, component):
+             visited[node] = True
+             component.append(node)
+             for neighbor in graph.neighbors(node):
+                 if not visited[neighbor]:
+                     kosaraju_dfs_transposed(graph, neighbor, visited, component)
+
+         # Algoritmo principal de Kosaraju
+         def kosaraju_algorithm(graph):
+             stack = []
+             visited = {node: False for node in graph.nodes}
+
+             # Paso 1: DFS en el grafo original para llenar el stack
+             for node in graph.nodes:
+                 if not visited[node]:
+                     kosaraju_dfs(graph, node, visited, stack)
+
+             # Paso 2: Transponer el grafo
+             transposed_graph = transpose_graph(graph)
+
+             # Paso 3: Encontrar componentes fuertemente conectados
+             visited = {node: False for node in graph.nodes}
+             strongly_connected_components = []
+
+             while stack:
+                 node = stack.pop()
+                 if not visited[node]:
+                     component = []
+                     kosaraju_dfs_transposed(transposed_graph, node, visited, component)
+                     strongly_connected_components.append(component)
+
+             return strongly_connected_components
+
+         # Ejecutar el algoritmo de Kosaraju
+         scc = kosaraju_algorithm(G)
+
+         # Crear la estructura de salida
+         user_groups = {
+             user_id: {
+                 "user_id": user_id,
+                 "name": G.nodes[user_id]['name'],
+                 "interest": G.nodes[user_id]['interest'],
+                 "gender": G.nodes[user_id]['gender'],
+                 "country": G.nodes[user_id]['country'],
+                 "profile_image": G.nodes[user_id]['profile_image'],
+                 "similar_users": [
+                     {
+                         "user_id": similar_user,
+                         "name": G.nodes[similar_user]['name'],
+                         "profile_image": G.nodes[similar_user]['profile_image']
+                     }
+                     for component in scc if user_id in component
+                     for similar_user in component if similar_user != user_id
+                 ]
+             }
+             for user_id in G.nodes
+         }
+
+         self.interest_groups = interest_groups
+         return user_groups
+
 
 ## Obtener los conteos de filtros para un perfil de usuario
     def get_filter_counts_for_profile(self, profile_user_id):
