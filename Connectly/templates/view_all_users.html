@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Panel de Administración</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-[Poppins]">
+    <!-- Navbar -->
+    <nav class="bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <img src="/static/images/logo.png" alt="Logo" class="h-10 w-10">
+                <h1 class="text-white text-2xl font-bold">Panel de Administración</h1>
+            </div>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="text-white hover:underline font-medium text-lg">Regresar al Panel</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <div class="container mx-auto p-6">
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h1 class="text-4xl font-bold mb-6 text-gray-800">Todos los Usuarios</h1>
+            <p class="text-gray-500 mb-4">Filtra y gestiona los usuarios de la plataforma según sus intereses.</p>
+
+            <!-- Filtro por Interés -->
+            <form method="GET" action="{{ url_for('view_all_users') }}" class="flex items-center space-x-4 mb-6">
+                <label for="interest" class="block text-gray-700 font-medium">Filtrar por interés:</label>
+                <select name="interest" id="interest" class="border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Todos</option>
+                    {% for interest in interests %}
+                    <option value="{{ interest }}" {% if interest == selected_interest %}selected{% endif %}>
+                        {{ interest }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-md hover:from-blue-600 hover:to-purple-700">
+                    Filtrar
+                </button>
+            </form>
+
+            <!-- Tabla de Usuarios -->
+            <div class="overflow-x-auto">
+                <table class="table-auto w-full text-left bg-white shadow-md rounded-lg">
+                    <thead>
+                        <tr class="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                            <th class="px-4 py-2">ID</th>
+                            <th class="px-4 py-2">Nombre</th>
+                            <th class="px-4 py-2">Interés</th>
+                            <th class="px-4 py-2">Género</th>
+                            <th class="px-4 py-2">País</th>
+                            <th class="px-4| py-2">Foto de perfil</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for user in users %}
+                        <tr class="hover:bg-gray-100">
+                            <td class="px-4 py-2 text-gray-700">{{ user.user_id }}</td>
+                            <td class="px-4 py-2 text-gray-700">{{ user.name }}</td>
+                            <td class="px-4 py-2 text-gray-700">{{ user.interest }}</td>
+                            <td class="px-4 py-2 text-gray-700">{{ user.gender }}</td>
+                            <td class="px-4 py-2 text-gray-700">{{ user.country }}</td>
+                            <td class="px-4 py-2">
+                                {% if user.profile_image %}
+                                <img src="{{ user.profile_image }}" alt="{{ user.name }}" class="h-10 w-10 rounded-full border border-gray-300">
+                                {% else %}
+                                <span class="text-gray-500">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

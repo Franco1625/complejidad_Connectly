@@ -2,18 +2,17 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import networkx as nx
+from pyvis.network import Network
 import matplotlib.pyplot as plt
 import os
 
-## Clase CommunityData
 class CommunityData:
     def __init__(self, db_url):
         self.engine = create_engine(db_url)
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.user_groups = self._load_user_groups(limit=1500)
  
-
-## Cargar los grupos de usuarios
+## Cargar los grupos de usuarios y 
     def _load_user_groups(self, limit=1500):
          df = pd.read_sql(
              f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
@@ -64,7 +63,8 @@ class CommunityData:
              for node in graph.nodes:
                  transposed.add_node(node)
              for u, v in graph.edges:
-                 transposed.add_edge(v, u)  # Invertir dirección de las aristas
+                 # Invertir dirección de las aristas
+                 transposed.add_edge(v, u)  
              return transposed
 
          # Paso 3: DFS en el grafo transpuesto
@@ -101,10 +101,9 @@ class CommunityData:
 
              return strongly_connected_components
 
-         # Ejecutar el algoritmo de Kosaraju
+         # Ejecutamos el algoritmo de Kosaraju
          scc = kosaraju_algorithm(G)
-
-         # Crear la estructura de salida
+       
          user_groups = {
              user_id: {
                  "user_id": user_id,
@@ -127,13 +126,88 @@ class CommunityData:
          }
 
          self.interest_groups = interest_groups
+         self.graph = G
          return user_groups
 
 
+    def filter_graph(self, limit=300):
+        if not self.graph:
+            raise ValueError("El grafo no está cargado.")
+        
+        nodes = list(self.graph.nodes)[:limit]
+        subgraph = self.graph.subgraph(nodes).copy()
+    
+        return subgraph
+    
+    ## cargar el grafo de kosaraju con ayuda de pyvis
+    def generate_pyvis_graph(self, file_path, max_nodes=300):
+       if not self.graph:
+           raise ValueError("El grafo no está cargado.")
+   
+       subgraph = (
+           self.graph
+           if len(self.graph.nodes) <= max_nodes
+           else self.graph.subgraph(list(self.graph.nodes)[:max_nodes])
+       )
+   
+       net = Network(height="740px", width="100%", bgcolor="#222222", font_color="white")
+       net.barnes_hut()
+   
+       # diseño y opciones para poder visualizar mejor el grafo 
+       net.set_options("""
+       var options = {
+         "nodes": {
+           "font": {
+             "size": 16,
+             "color": "#ffffff"
+           },
+           "scaling": {
+             "min": 10,
+             "max": 20
+           },
+           "borderWidth": 2
+         },
+         "edges": {
+           "color": {
+             "inherit": true
+           },
+           "smooth": {
+             "type": "dynamic"
+           }
+         },
+         "physics": {
+           "enabled": true,
+           "stabilization": {
+             "iterations": 500
+           },
+           "barnesHut": {
+             "gravitationalConstant": -2000,
+             "centralGravity": 0.3,
+             "springLength": 250,
+             "springConstant": 0.02,
+             "damping": 0.08
+           }
+         }
+       }
+       """)
+   
+       for node, data in subgraph.nodes(data=True):
+           net.add_node(
+               node,
+               label=data.get("name", str(node)),
+               title=f"Interés: {data.get('interest', 'N/A')}",
+               group=data.get("interest", "Others"),
+               shape="circularImage" if data.get("profile_image") else "dot",
+               image=data.get("profile_image", ""),
+           )
+   
+       for source, target, data in subgraph.edges(data=True):
+           net.add_edge(source, target, title=data.get("weight", "Connection"))
+   
+       net.save_graph(file_path)
+    
+    
     def get_second_interest(self, user_id):
-        """
-        Obtiene el segundo interés de un usuario basado en su UserID utilizando el query proporcionado.
-        """
         query = text("""
             SELECT 
                 UserID, 
@@ -261,10 +335,6 @@ class CommunityData:
     
 ## Obtener las recomendaciones de usuarios  
     def get_user_recommendations(self, user_id):
-        """
-        Obtiene recomendaciones de usuarios para un usuario dado,
-        considerando seguidores mutuos, segundo interés y BFS.
-        """
         # Obtener segundo interés del usuario
         second_interest = self.get_second_interest(user_id)
     
@@ -418,18 +488,21 @@ class CommunityData:
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
+    
 ## Obtener los seguidores de un usuario
     def get_follower_count(self, user_id):
         query = text("SELECT COUNT(*) FROM user_follows WHERE followed_id = :user_id")
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
+    
 ## Obtener los seguidos de un usuario
     def get_following_count(self, user_id):
         query = text("SELECT COUNT(*) FROM user_follows WHERE follower_id = :user_id")
         with self.engine.connect() as connection:
             result = connection.execute(query, {"user_id": user_id}).scalar()
         return result
+    
 ## Obtener los posts de un usuario    
     def get_followers(self, user_id, current_user_id):
         query = text("""

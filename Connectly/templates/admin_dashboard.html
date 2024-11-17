@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-[Poppins]">
+    <!-- Barra de navegación -->
+    <nav class="bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <img src="/static/images/logo.png" alt="Logo" class="h-10 w-10">
+                <h1 class="text-white text-2xl font-bold">Panel de Administración</h1>
+            </div>
+            <div>
+                <a href="{{ url_for('logout') }}" class="text-white hover:underline font-medium text-lg">Cerrar sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <div class="container mx-auto p-6">
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <h1 class="text-4xl font-bold mb-6 text-gray-800">¡Bienvenido, Administrador!</h1>
+            <p class="text-gray-600 mb-8">Administra tu plataforma de manera eficiente con las herramientas a continuación.</p>
+
+            <!-- Tarjetas de acceso rápido -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tarjeta 1: Visualizar Grafo -->
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
+                    <h2 class="text-xl font-semibold mb-4">Visualizar Grafo</h2>
+                    <p class="mb-4">Analiza el grafo de comunidades de usuarios según sus intereses para obtener información.</p>
+                    <a href="{{ url_for('admin_graph') }}" class="bg-white text-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200">
+                        Ir al Grafo
+                    </a>
+                </div>
+
+                <!-- Tarjeta 2: Ver Todos los Usuarios -->
+                <div class="bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
+                    <h2 class="text-xl font-semibold mb-4">Ver Todos los Usuarios</h2>
+                    <p class="mb-4">Explora a todos los usuarios de la plataforma.</p>
+                    <a href="{{ url_for('view_all_users') }}" class="bg-white text-purple-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200">
+                        Ir a Usuarios
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

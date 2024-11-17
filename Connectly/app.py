@@ -1,5 +1,6 @@
 ## Este archivo contiene la lógica de la aplicación web Connectly, que es una red social simple que permite a los usuarios registrarse, seguirse entre sí, publicar publicaciones, comentar y chatear en tiempo real. La aplicación utiliza Flask para el backend y la base de datos MySQL para almacenar los datos de los usuarios, publicaciones y mensajes. También utiliza Flask-SocketIO para la funcionalidad de chat en tiempo real.
 import os, uuid
+from pyvis.network import Network
 from flask import Flask, g, render_template, redirect, url_for, request, session, send_from_directory, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
@@ -31,11 +32,71 @@ os.makedirs(STORAGE_FOLDER, exist_ok=True)
 def home():
     return redirect(url_for('login'))
 
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    return render_template('admin_dashboard.html', user_id=session.get('user_id'))
+
+@app.route('/view_all_users', methods=['GET'])
+def view_all_users():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # Obtener el interés seleccionado del parámetro GET
+    selected_interest = request.args.get('interest', '')
+
+    # Obtener todos los intereses únicos
+    interests = sorted(set(user['interest'] for user in community_data_instance.user_groups.values()))
+
+    # Filtrar los usuarios según el interés seleccionado
+    if selected_interest:
+        users = [
+            user for user in community_data_instance.user_groups.values()
+            if user['interest'] == selected_interest
+        ]
+    else:
+        users = community_data_instance.user_groups.values()
+
+    return render_template(
+        'view_all_users.html',
+        users=users,
+        interests=interests,
+        selected_interest=selected_interest
+    )
+
+@app.route('/admin_graph', methods=['GET'])
+def admin_graph():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # Limitar la cantidad de nodos desde los parámetros GET
+    limit = request.args.get('limit', 300, type=int)
+
+    # Ruta del archivo donde se generará el grafo
+    graph_file = os.path.join(STORAGE_FOLDER, "admin_graph.html")
+
+    # Generar el grafo con PyVis
+    community_data_instance.generate_pyvis_graph(graph_file, max_nodes=limit)
+
+    return render_template("admin_graph.html", graph_file=f"storage/admin_graph.html")
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # user y password del admin
+    ADMIN_USERNAME = "admin"
+    ADMIN_PASSWORD = "admin"
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+
+        # Validar si es el usuario administrador
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['user_id'] = "admin"
+            session['is_admin'] = True 
+            session.permanent = True
+            return redirect(url_for('admin_dashboard'))
 
         query = text("""
             SELECT UserID, password 
@@ -50,6 +111,7 @@ def login():
                 user_id, stored_password = result
                 if stored_password == password:
                     session['user_id'] = int(user_id)
+                    session['is_admin'] = False
                     session.permanent = True
                     return redirect(url_for('profile', user_id=user_id))
                 else:
@@ -59,7 +121,6 @@ def login():
     
     return render_template('login.html')
 
-## Ruta para el registro de nuevos usuarios
 @app.route('/profile/<int:user_id>')
 def profile(user_id):
     current_user_id = session.get('user_id')
@@ -487,6 +548,25 @@ def chat():
 
     return render_template('chat.html', mutual_followers=mutual_followers, messages=messages, selected_user_id=selected_user_id)
 
+@app.route('/search', methods=['GET'])
+def search():
+    term = request.args.get('term', '').strip()
+    current_user_id = session.get('user_id')
+    results = []
+
+    if term:
+        results = [
+            {
+                "user_id": user["user_id"],
+                "name": user["name"],
+                "interest": user["interest"],
+                "profile_image": user["profile_image"],
+            }
+            for user in community_data_instance.user_groups.values()
+            if term.lower() in user["interest"].lower() and user["user_id"] != current_user_id
+        ]
+    
+    return render_template('search.html', term=term, results=results)
 
 @app.route('/home')
 def index():
