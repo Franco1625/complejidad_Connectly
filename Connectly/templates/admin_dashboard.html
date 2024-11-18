@@ -9,8 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 font-[Poppins]">
-    <!-- Barra de navegación -->
-    <nav class="bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
+    <nav class=" bg-gradient-to-r from-blue-500 to-teal-500 shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-4">
                 <img src="/static/images/logo.png" alt="Logo" class="h-10 w-10">
@@ -31,7 +30,7 @@
             <!-- Tarjetas de acceso rápido -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Tarjeta 1: Visualizar Grafo -->
-                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
+                <div class=" bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
                     <h2 class="text-xl font-semibold mb-4">Visualizar Grafo</h2>
                     <p class="mb-4">Analiza el grafo de comunidades de usuarios según sus intereses para obtener información.</p>
                     <a href="{{ url_for('admin_graph') }}" class="bg-white text-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200">
@@ -40,7 +39,7 @@
                 </div>
 
                 <!-- Tarjeta 2: Ver Todos los Usuarios -->
-                <div class="bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
+                <div class=" bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow">
                     <h2 class="text-xl font-semibold mb-4">Ver Todos los Usuarios</h2>
                     <p class="mb-4">Explora a todos los usuarios de la plataforma.</p>
                     <a href="{{ url_for('view_all_users') }}" class="bg-white text-purple-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200">
