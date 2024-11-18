@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('data/SocialMediaUsersDataset.csv').head(100)
+df = pd.read_csv('data/SocialMediaUsersDataset.csv').head(1500)
 
 G = nx.DiGraph()
 
