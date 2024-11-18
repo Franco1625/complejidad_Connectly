@@ -183,7 +183,7 @@ class CommunityData:
            "barnesHut": {
              "gravitationalConstant": -2000,
              "centralGravity": 0.3,
-             "springLength": 250,
+             "springLength": 300,
              "springConstant": 0.02,
              "damping": 0.08
            }
