@@ -70,10 +70,8 @@ def admin_graph():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # Limitar la cantidad de nodos desde los parámetros GET
     limit = request.args.get('limit', 300, type=int)
 
-    # Ruta del archivo donde se generará el grafo
     graph_file = os.path.join(STORAGE_FOLDER, "admin_graph.html")
 
     # Generar el grafo con PyVis
