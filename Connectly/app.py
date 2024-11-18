@@ -182,10 +182,7 @@ def profile(user_id):
 
 @app.route('/get_second_interest/<int:user_id>', methods=['GET'])
 def get_second_interest_endpoint(user_id):
-    """
-    Endpoint para obtener el segundo interés de un usuario dado su ID.
-    """
-    # Usar la instancia de CommunityData para obtener el segundo interés
+ 
     second_interest = community_data_instance.get_second_interest(user_id)
     
     if second_interest:
