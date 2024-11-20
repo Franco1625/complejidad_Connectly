@@ -12,7 +12,7 @@ class CommunityData:
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.user_groups = self._load_user_groups(limit=1500)
  
-## Cargar los grupos de usuarios y 
+## Cargar los grupos de usuarios obtenidos con kosaraju
     def _load_user_groups(self, limit=1500):
          df = pd.read_sql(
              f'SELECT UserID, Name, Interests, Gender, Country, profile_image FROM social_media_users LIMIT {limit}',
